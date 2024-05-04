@@ -1,19 +1,17 @@
 package email;
-import java.util.regex.Pattern;
 import java.util.List;
 import java.util.ArrayList;
 
 public class User{
 	
 	private	String name, email, password;
-	private List<String> sentMessages, receivedMessages, draftMessages;
+	private List<Message> sentMessages, receivedMessages, draftMessages;
 	
 	public User(){
 		sentMessages=new ArrayList<>();
 		receivedMessages=new ArrayList<>();
 		draftMessages=new ArrayList<>();
 	}
-	
 	public String getName(){
 		return name;
 	}
@@ -23,13 +21,13 @@ public class User{
 	public String getPassword(){
 		return password;
 	}
-	public List<String> getSentMessages(){
+	public List<Message> getSentMessages(){
 		return sentMessages;
 	}
-	public List<String> getReceivedMessages(){
+	public List<Message> getReceivedMessages(){
 		return receivedMessages;
 	}
-	public List<String> getDraftMessages(){
+	public List<Message> getDraftMessages(){
 		return draftMessages;
 	}
 	
@@ -47,7 +45,7 @@ public class User{
 				this.email=email;
 				return true;
 			}else
-				System.out.println("That email id is taken.Try another.");
+				System.out.println("\033[31m"+"That email id is taken.Try another."+"\033[0m");
 		}
 		return false;
 	}
@@ -59,13 +57,13 @@ public class User{
 		}
 		return false;
 	}
-	public void setSentMessage(String message){
+	public void setSentMessage(Message message){
 		sentMessages.add(message);
 	}
-	public void setReceivedMessage(String message){
+	public void setReceivedMessage(Message message){
 		receivedMessages.add(message);
 	}
-	public void setDraftMessage(String message){
+	public void setDraftMessage(Message message){
 		draftMessages.add(message);
 	}
 	

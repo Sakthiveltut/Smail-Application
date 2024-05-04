@@ -1,9 +1,9 @@
 package email;
 import java.util.Scanner;
-import java.util.List;
 
 public class Email{
 	static Scanner sc = new Scanner(System.in);
+	static Scanner sc2 = new Scanner(System.in);
 	static User user;
 	static UserDatabase userDatabase = UserDatabase.getInstance();
 	static String name,email,password1,password2;
@@ -21,13 +21,13 @@ public class Email{
 			System.out.println("     |______|_| |_| |_|\\__,_|_|_|");
 
 	 
-			System.out.println("1.Signup\n2.Login");
+			System.out.println("\u001B[33m"+"1.Signup\n2.Login"+"\u001B[0m");
 			int choice = sc.nextInt();
 			switch(choice){
 				case 1:
 					user = new User();
 					if(isName() && isEmail() && isPassword()){
-						System.out.println("Account created successfully.");
+						System.out.println("\u001B[32m"+"Account created successfully."+"\u001B[0m");
 					}
 					userDatabase.addUser(user);
 					break;
@@ -35,15 +35,14 @@ public class Email{
 					auth.loggedIn();
 					break;
 				default:
-					System.out.println("Invalid choice.Please try again...");
+					System.out.println("\033[31m"+"Invalid choice.Please try again..."+"\033[0m");
 			}
 			System.out.println(userDatabase.getUser());
 		}
 	}
 	
 	static boolean isName(){
-		System.out.println("Enter a name: ");
-		sc.nextLine();
+		System.out.println("\u001B[33m"+"Enter a name: "+"\u001B[0m");
 		name = sc.nextLine();
 		if(!user.setName(name)){
 			isName();
@@ -52,7 +51,7 @@ public class Email{
 		return true;
 	}
 	static boolean isEmail(){
-		System.out.println("\nEnter a email id: ");	
+		System.out.println("\u001B[33m"+"\nEnter a email id: "+"\u001B[0m");	
 		email = sc.nextLine();
 		if(!user.setEmail(email)){
 			isEmail();
@@ -61,10 +60,10 @@ public class Email{
 		return true;
 	}
 	static boolean isPassword(){
-		System.out.println("\nEnter a new password: ");
+		System.out.println("\u001B[33m"+"\nEnter a new password: "+"\u001B[0m");
 		password1 = sc.nextLine();
 		
-		System.out.println("\nRe enter password: ");
+		System.out.println("\u001B[33m"+"\nRe enter password: "+"\u001B[0m");
 		password2 = sc.nextLine();
 		
 		if(!user.setPassword(password1,password2)){
