@@ -1,4 +1,3 @@
-package email;
 import java.util.Arrays;
 
 public class Message{

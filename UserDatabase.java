@@ -1,4 +1,3 @@
-package email;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -31,5 +30,4 @@ public class UserDatabase{
 		}
 		return null;
 	}
-	
 }

@@ -1,5 +1,3 @@
-package email;
-
 import java.util.List;
 import java.util.Scanner;
 import java.util.Date;
@@ -97,7 +95,7 @@ public class Login{
 					System.out.print("\u001B[33m"+"\nBody: "+"\u001B[0m");
 					body = sc.nextLine();
 					
-					if(msg.equals("new message"))
+					if("new message".equals(msg))
 						m.setMessageId(messageId);
 					m.setFrom(currentUser.getEmail());
 					m.setTo(to);
