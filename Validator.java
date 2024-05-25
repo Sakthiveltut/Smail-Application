@@ -2,7 +2,7 @@ import java.util.regex.Pattern;
 
 public class Validator{
 	static public boolean isValidName(String name){
-		if(Pattern.compile("^[a-z]+$").matcher(name).find()){
+		if(Pattern.compile("^[A-Za-z]+( [A-Za-z]+)*$").matcher(name).find()){
 			return true;
 		}else{
 			System.out.println("\033[31m"+"\nPlease enter a valid name"+"\033[0m");
@@ -12,6 +12,15 @@ public class Validator{
 	
 	static public boolean isValidEmail(String email){
 		if(Pattern.compile("^[a-z0-9]+(\\.[a-z0-9]+)*@[a-z]+(\\.[a-z]+)$").matcher(email).find()){
+			return true;
+		}else{
+			System.out.println("\033[31m"+"\nPlease enter a valid email id"+"\033[0m");
+			return false;
+		}
+	}
+	
+	static public boolean isValidSmail(String email){
+		if(Pattern.compile("^[a-z0-9]+(\\.[a-z0-9]+)*@smail.com").matcher(email).find()){
 			return true;
 		}else{
 			System.out.println("\033[31m"+"\nPlease enter a valid email id"+"\033[0m");
