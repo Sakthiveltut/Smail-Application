@@ -14,7 +14,7 @@ public class Validator{
 		if(Pattern.compile("^[a-z0-9]+(\\.[a-z0-9]+)*@[a-z]+(\\.[a-z]+)$").matcher(email).find()){
 			return true;
 		}else{
-			System.out.println("\033[31m"+"\nPlease enter a valid email id"+"\033[0m");
+			System.out.println("\033[31m"+"\n"+email+" is invalid."+"\033[0m");
 			return false;
 		}
 	}
@@ -23,7 +23,7 @@ public class Validator{
 		if(Pattern.compile("^[a-z0-9]+(\\.[a-z0-9]+)*@smail.com").matcher(email).find()){
 			return true;
 		}else{
-			System.out.println("\033[31m"+"\nPlease enter a valid email id"+"\033[0m");
+			System.out.println("\033[31m"+"\n"+email+" is invalid."+"\033[0m");
 			return false;
 		}
 	}

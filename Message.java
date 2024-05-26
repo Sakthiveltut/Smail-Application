@@ -6,97 +6,119 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.SQLException;
 import java.sql.Connection;
+import java.util.List;
+import java.util.ArrayList;
 
 public class Message{
 	private static Connection connection = DBConnection.getConnection();
 	SpamChecker spamChecker = new SpamChecker();
 	Scanner sc = new Scanner(System.in);
+	List<Integer> userIds,anonymousUserIds;
+	List<String> unregisteredUsers;
 
 	public void sendMessage(int id,String from,String to,String cc,String subject,String description){
-		User user = new User();
-		Integer toId = user.userExists(to);
-		if(toId!=null){
-			boolean isValidEmail = true;
-			Integer ccIds[] = new Integer[0];
-			if(!cc.isEmpty()){
+		User user = new User();	
+		if(!to.isEmpty()){
+			String toEmails[] = to.split(",");
+			if(isValidEmails(toEmails)){
 				String ccEmails[] = cc.split(",");
-				ccIds = new Integer[ccEmails.length];
-				for(int i=0;i<ccEmails.length;i++){
-					ccIds[i] = user.userExists(ccEmails[i]);
-					if(ccIds[i]==null){
-						isValidEmail=false;
-						System.out.println("\033[31m"+ccIds[i]+" is not exists."+"\033[0m");	
-						break;
+				if(isValidEmails(ccEmails)){
+					Integer messageId = setMessage(id,subject,description);
+					
+					separateUserIds(toEmails);
+					for(Integer userId:userIds){
+						setRecipients(messageId,userId,"to");
 					}
+					
+					separateUserIds(ccEmails);
+					for(Integer userId:userIds){
+						setRecipients(messageId,userId,"cc");
+					}
+					setMessageFolders(id,messageId);
+					System.out.println("\u001B[32m"+"Message sented successfully.\n"+"\u001B[0m");
 				}
 			}
-			if(isValidEmail){
-				
-				String query = "insert into Messages(sender_id,subject,description) values(?,?,?)";
-				try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
-					preparedStatement.setInt(1,id);
-					preparedStatement.setString(2,subject);
-					preparedStatement.setString(3,description);
-					preparedStatement.executeUpdate();
-					
-					
-					
-					String folderName = spamChecker.isSpam(subject+" "+description)?"spam":"inbox";
-
-					preparedStatement.setInt(1,toId);
-					preparedStatement.setInt(2,user.getFolderId(toId,folderName));
-					preparedStatement.setString(3,from);
-					preparedStatement.setString(4,to);
-					preparedStatement.setString(5,cc);
-					preparedStatement.setString(6,subject);
-					preparedStatement.setString(7,description);
-					preparedStatement.executeUpdate();	
-					
-					for(int ccId:ccIds){
-						preparedStatement.setInt(1,ccId);
-						preparedStatement.setInt(2,user.getFolderId(ccId,folderName));
-						preparedStatement.setString(3,from);
-						preparedStatement.setString(4,to);
-						preparedStatement.setString(5,cc);
-						preparedStatement.setString(6,subject);
-						preparedStatement.setString(7,description);
-						preparedStatement.executeUpdate();	
-					}
-					
-					System.out.println("\u001B[32m"+"Message sented successfully.\n"+"\u001B[0m");
-				}catch(SQLException e){
-					e.printStackTrace();
-				}
-			}				
-		}else
-			System.out.println("\033[31m"+to+" is not Exists."+"\033[0m");
+		}
 	}
 	
-	public void updateMessage(int id,String subject,String description){
+	public boolean isValidEmails(String emails[]){
+		for(String email:emails){
+			if(!Validator.isValidEmail(email)){
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public boolean separateUserIds(String emails[]){
+		userIds = new ArrayList<>();
+		anonymousUserIds = new ArrayList<>();
+		unregisteredUsers = new ArrayList<>();
+		User user = new User();
+		for(String email:emails){
+			if(Validator.isValidEmail(email)){
+				if(Validator.isValidSmail(email)){
+					Integer userId = user.userExists(email);
+					if(userId==null){
+						unregisteredUsers.add(email);
+					}else{
+						userIds.add(userId);
+					}
+				}else{
+					Integer anonymousUserId = user.anonymousUserExists(email);
+					if(anonymousUserId==null){
+						anonymousUserId = user.setAnonymousUser(email);
+					}
+					anonymousUserIds.add(anonymousUserId);
+				}
+			}else{
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public Integer setMessage(int id,String subject,String description){
 		String query = "insert into Messages(sender_id,subject,description) values(?,?,?)";
-		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
+		try(PreparedStatement preparedStatement = connection.prepareStatement(query,Statement.RETURN_GENERATED_KEYS)){
 			preparedStatement.setInt(1,id);
 			preparedStatement.setString(2,subject);
 			preparedStatement.setString(3,description);
 			preparedStatement.executeUpdate();
+			ResultSet resultSet = preparedStatement.getGeneratedKeys();
+			if(resultSet.next()){
+				int messageId = resultSet.getInt(1);
+				resultSet.close();
+				return messageId;
+			}
 		}catch(SQLException e){
 			e.printStackTrace();
 		}
+		return null;
 	}
-	public void updateRecipients(int id,String email,String type){
-		String query = "insert into Recipients(message_id,email,type) values(?,?,?)";
+	public void setRecipients(int message_id,int user_id,String type){
+		String query = "insert into Recipients(message_id,user_id,type) values(?,?,?)";
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
-			preparedStatement.setInt(1,id);
-			preparedStatement.setString(2,email);
+			preparedStatement.setInt(1,message_id);
+			preparedStatement.setInt(2,user_id);
 			preparedStatement.setString(3,type);
 			preparedStatement.executeUpdate();
 		}catch(SQLException e){
 			e.printStackTrace();
 		}
 	}
-	
-	
-	public void viewMessages(int id,String folderName,String searchKeyword){
+	public void setMessageFolders(int user_id,int message_id){
+		String query = "insert into MessageFolders(user_id,folder_id,message_id) values(?,(select id from Folders where name = ?),?)";
+		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
+			preparedStatement.setInt(1,user_id);
+			preparedStatement.setString(2,"inbox");
+			preparedStatement.setInt(3,message_id);
+			preparedStatement.executeUpdate();
+		}catch(SQLException e){
+			e.printStackTrace();
+		}
+	}
+	/*public void viewMessages(int id,String folderName,String searchKeyword){
 		String query = "select id,`from`,`to`,cc,subject,description,created_at_datetime from Messages where user_id=? and folder_id=?";
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
 			User user = new User();
@@ -126,35 +148,9 @@ public class Message{
 		}catch(SQLException e){
 			e.printStackTrace();
 		}
-	}
+	}*/
 	
-	public void viewSpecificMessages(int id,String folderName){
-		String query = "select `to`,cc,subject,description,created_at_datetime from Messages where user_id=? and "+folderName+"=true";
-		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
-			preparedStatement.setInt(1,id);
-			ResultSet resultSet = preparedStatement.executeQuery();
-			while(resultSet.next()){
-				String from = resultSet.getString("from");
-				String to = resultSet.getString("to");
-                String cc = resultSet.getString("cc");
-                String subject = resultSet.getString("subject");
-                String description = resultSet.getString("description");
-                String createdAt = resultSet.getString("created_at_datetime");
-				
-                System.out.println("From: " + from);
-                System.out.println("To: " + to);
-                System.out.println("CC: " + cc);
-                System.out.println("Subject: " + subject);
-                System.out.println("Description: " + description);
-                System.out.println("Created At: " + createdAt);
-				System.out.println("--------------------------------------------------------");
-			}
-		}catch(SQLException e){
-			e.printStackTrace();
-		}
-	}
-	
-	public void options(int user_id,String folderName){
+	/*public void options(int user_id,String folderName){
 		String searchKeyword = null;
 		viewMessages(user_id,folderName,searchKeyword);
 		System.out.println("1.Search\n2.Delete\n3.Exit");
@@ -177,7 +173,6 @@ public class Message{
 			System.out.println("\033[31m"+"Invalid choice.Please try again..."+"\033[0m");
 		}
 	}
-	
 	public void messageSetBinFolder(int user_id,int message_id){
 		String query = "update Messages set folder_id=? where id=?";
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
@@ -189,7 +184,6 @@ public class Message{
 			e.printStackTrace();
 		}
 	}
-	
 	public void deleteMessage(int id){
 		String query = "delete from Messages where id = ?";
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
@@ -199,5 +193,5 @@ public class Message{
 		}catch(Exception e){
 			e.printStackTrace();
 		}
-	}
+	}*/
 }

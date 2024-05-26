@@ -44,21 +44,21 @@ public class Main{
 							Message message = new Message();
 							String userDetails[] = user.getUserData(id);
 							switch(choice){
-								case "1":	
+								/*case "1":	
 									System.out.println("Name: "+userDetails[0]);
 									System.out.println("Email: "+userDetails[1]);
 									System.out.println("Last login date and time: "+userDetails[2]);
-									break;
+									break;*/
 								case "2":
-									message.options(id,"inbox");
+									//message.viewMessages(id,"inbox",null);
 									break;
-								case "3":
+								/*case "3":
 									message.viewSpecificMessages(id,"is_read");
-									break;
+									break;*/
 								case "4":
 									String from = userDetails[1];
 									System.out.print("\u001B[33m"+"From: "+"\u001B[0m"+from);
-									System.out.print("\u001B[33m"+"\nTo: "+"\u001B[0m");
+									System.out.print("\u001B[33m"+"\nTo(Separated with comma(,)): "+"\u001B[0m");
 									String to = sc.nextLine();
 									System.out.print("\u001B[33m"+"\nCC(Separated with comma(,)): "+"\u001B[0m");
 									String cc = sc.nextLine();
@@ -69,7 +69,7 @@ public class Main{
 								
 									message.sendMessage(id,from,to,cc,subject,description);							
 									break;
-								case "5":
+								/*case "5":
 									message.viewSpecificMessages(id,"is_starred");
 									break;
 								case "6":
@@ -83,7 +83,7 @@ public class Main{
 									break;
 								case "9":
 									message.options(id,"bin");
-									break;
+									break;*/
 								case "10":
 									exit=true;
 									break;

@@ -18,31 +18,29 @@ public class User{
 	
 	public boolean signUp(String name,String email,String password1,String password2){
 		if(Validator.isValidName(name)){ 
-			if(Validator.isValidSmail(email)){
-				if(userExists(email)==null){
-					if(Validator.isValidPassword(password1)&& Validator.isValidPassword(password2)){
-						if(password1.equals(password2)){
-							String query = "insert into Users(name,email,password) values(?,?,?)";
-							try(PreparedStatement preparedStatement = connection.prepareStatement(query,Statement.RETURN_GENERATED_KEYS)){
-								preparedStatement.setString(1,name);
-								preparedStatement.setString(2,email);
-								preparedStatement.setString(3,password2);
-								preparedStatement.executeUpdate();
-								ResultSet resultSet = preparedStatement.getGeneratedKeys();
-								if(resultSet.next()){
-									assignFolders(resultSet.getInt(1));
-								}
-								System.out.println("\u001B[32m"+"Account created successfully."+"\u001B[0m");
-								return true;
-							}catch(SQLException e){
-								e.printStackTrace();
+			if(userExists(email)==null){
+				if(Validator.isValidPassword(password1)&& Validator.isValidPassword(password2)){
+					if(password1.equals(password2)){
+						String query = "insert into Users(name,email,password) values(?,?,?)";
+						try(PreparedStatement preparedStatement = connection.prepareStatement(query,Statement.RETURN_GENERATED_KEYS)){
+							preparedStatement.setString(1,name);
+							preparedStatement.setString(2,email);
+							preparedStatement.setString(3,password2);
+							preparedStatement.executeUpdate();
+							ResultSet resultSet = preparedStatement.getGeneratedKeys();
+							if(resultSet.next()){
+								assignFolders(resultSet.getInt(1));
 							}
-						}else
-							System.out.println("\033[31m"+"Password mismatch."+"\033[0m");
-					}
-				}else
-					System.out.println("\033[31m"+"That email id is taken.Try another."+"\033[0m");
-			}
+							System.out.println("\u001B[32m"+"Account created successfully."+"\u001B[0m");
+							return true;
+						}catch(SQLException e){
+							e.printStackTrace();
+						}
+					}else
+						System.out.println("\033[31m"+"Password mismatch."+"\033[0m");
+				}
+			}else
+				System.out.println("\033[31m"+"That email id is taken.Try another."+"\033[0m");
 		}	
 		return false;
 	}
@@ -68,6 +66,38 @@ public class User{
 		}
 		return null;
 	}
+	public Integer setAnonymousUser(String email){
+		String query = "insert into AnonymousUser(email) values(?)";
+		try(PreparedStatement insertStatement = connection.prepareStatement(query,Statement.RETURN_GENERATED_KEYS)){
+			insertStatement.setString(1,email);
+			insertStatement.executeUpdate();
+			try(ResultSet resultSet = insertStatement.getGeneratedKeys()){
+				if(resultSet.next()){
+					int id = resultSet.getInt("id");
+					resultSet.close();
+					return id;
+				}
+			}
+		}catch(SQLException e){
+			e.printStackTrace();
+		}
+		return null;
+	}
+	public Integer anonymousUserExists(String email){
+		if(Validator.isValidEmail(email) && !Validator.isValidSmail(email)){
+			String query = "select email from AnonymousUser where email=?";
+			try(PreparedStatement selectStatement = connection.prepareStatement(query)){
+				selectStatement.setString(1,email);
+				ResultSet resultSet = selectStatement.executeQuery();
+				if(resultSet.next()){
+					return resultSet.getInt("id");
+				}
+			}catch(SQLException e){
+				e.printStackTrace();
+			}
+		}
+		return null;
+	}
 	public void updateLoginTime(int id){
 		String query = "update Users set login_time=now() where id=?";
 		try(PreparedStatement updateStatement = connection.prepareStatement(query)){
@@ -78,7 +108,7 @@ public class User{
 		}
 	}
 	public Integer userExists(String email){
-		if(Validator.isValidEmail(email)){
+		if(Validator.isValidSmail(email)){
 			String query = "select id from Users where email=?";
 			try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
 				preparedStatement.setString(1,email);
@@ -116,5 +146,24 @@ public class User{
 		}catch(SQLException e){
 			e.printStackTrace();
 		}
+	}
+	public String[] getUserData(int id){
+		String query = "select name,email,login_time from Users where id=?";
+		
+		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
+			preparedStatement.setInt(1,id);
+			ResultSet resultSet = preparedStatement.executeQuery();
+			if(resultSet.next()){
+				lastLoginTime = lastLoginTime==null?resultSet.getString("login_time"):lastLoginTime;
+				String userDetails[] = {resultSet.getString("name"),
+										resultSet.getString("email"),
+										lastLoginTime
+				};
+				return userDetails;
+			}
+		}catch(SQLException e){
+			e.printStackTrace(); 
+		}
+		return null;
 	}
 }
