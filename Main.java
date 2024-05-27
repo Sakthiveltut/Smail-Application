@@ -71,11 +71,12 @@ public class Main{
 									break;
 								/*case "5":
 									message.viewSpecificMessages(id,"is_starred");
-									break;
+									break;*/
 								case "6":
-									message.options(id,"send");
+									//message.options(id,"send");
+									//message.viewMessages(id,"inbox",null);
 									break;
-								case "7":
+								/*case "7":
 									message.options(id,"draft");
 									break;
 								case "8":

@@ -24,17 +24,18 @@ public class Message{
 				String ccEmails[] = cc.split(",");
 				if(isValidEmails(ccEmails)){
 					Integer messageId = setMessage(id,subject,description);
-					
+					setMessageFolders(id,messageId,"send");
 					separateUserIds(toEmails);
 					for(Integer userId:userIds){
 						setRecipients(messageId,userId,"to");
+						setMessageFolders(userId,messageId,"inbox");
 					}
 					
 					separateUserIds(ccEmails);
 					for(Integer userId:userIds){
 						setRecipients(messageId,userId,"cc");
+						setMessageFolders(userId,messageId,"inbox");
 					}
-					setMessageFolders(id,messageId);
 					System.out.println("\u001B[32m"+"Message sented successfully.\n"+"\u001B[0m");
 				}
 			}
@@ -107,11 +108,11 @@ public class Message{
 			e.printStackTrace();
 		}
 	}
-	public void setMessageFolders(int user_id,int message_id){
+	public void setMessageFolders(int user_id,int message_id,String folderName){
 		String query = "insert into MessageFolders(user_id,folder_id,message_id) values(?,(select id from Folders where name = ?),?)";
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
 			preparedStatement.setInt(1,user_id);
-			preparedStatement.setString(2,"inbox");
+			preparedStatement.setString(2,folderName);
 			preparedStatement.setInt(3,message_id);
 			preparedStatement.executeUpdate();
 		}catch(SQLException e){
