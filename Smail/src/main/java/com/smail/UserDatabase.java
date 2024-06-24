@@ -5,7 +5,22 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+
 public class UserDatabase {
+	
+	private static ThreadLocal<User> currentUser = new ThreadLocal<User>();
+	
+	public static User getCurrentUser() {
+		return currentUser.get();
+	}
+	
+	public static void setCurrentUser(User user) {
+		currentUser.set(user);
+	}
+	
+	public static void clearCurrentUser() {
+		currentUser.remove();
+	}
 	
 	public static User userExists(String email) throws Exception{
 		String query = "select id,name,password,login_time from Users u left join RegisteredUsers ru  on u.id = ru.user_id where u.email = ?";

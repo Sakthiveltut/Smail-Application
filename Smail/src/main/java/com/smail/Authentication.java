@@ -7,10 +7,11 @@ import java.sql.SQLException;
 
 import com.smail.custom_exception.AuthenticationFailedException;
 import com.smail.custom_exception.EmailAlreadyExistsException;
+import com.smail.custom_exception.InvalidInputException;
 
 public class Authentication {
 	
-	public static boolean signUp(String name,String email,String password) throws Exception{
+	public static boolean signUp(String name,String email,String password) throws InvalidInputException, EmailAlreadyExistsException, Exception{
 		if(Validator.isValidName(name)){
 			if(Validator.isValidEmail(email)) {
 				User user = UserDatabase.userExists(email);

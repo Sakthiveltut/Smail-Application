@@ -70,7 +70,7 @@
     <a href="<%= request.getContextPath() %>/logout">Log Out</a>
 </div>
 
-<div class="message-details">
+<div class="message-details" id="messageDetailsContainer">
     <% 
         Message message = (Message) request.getAttribute("message");
         if (message != null) {
@@ -86,6 +86,50 @@
         <h3>Message not found.</h3>
     <% } %>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Function to load message details via AJAX
+        function loadMessageDetails(messageId) {
+            $.ajax({
+                type: 'GET',
+                url: '<%= request.getContextPath() %>/messageDetails?id=' + messageId, // Endpoint to fetch message details
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        var message = response.data.message;
+                        var messageDetailsHtml = '';
+                        if (message) {
+                            messageDetailsHtml += '<h6><strong>From:</strong> ' + message.from + '</h6>';
+                            messageDetailsHtml += '<h6><strong>To:</strong> ' + message.to + '</h6>';
+                            if (message.cc && message.cc.length > 0) {
+                                messageDetailsHtml += '<h6><strong>Cc:</strong> ' + message.cc.join(', ') + '</h6>';
+                            }
+                            messageDetailsHtml += '<h1><strong>Subject:</strong> ' + message.subject + '</h1>';
+                            messageDetailsHtml += '<p>' + message.description + '</p>';
+                        } else {
+                            messageDetailsHtml += '<h3>Message not found.</h3>';
+                        }
+                        $('#messageDetailsContainer').html(messageDetailsHtml);
+                    } else {
+                        console.error('Failed to load message details:', response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading message details:', error);
+                }
+            });
+        }
+
+        var messageId = '<%= request.getParameter("id") %>';
+        if (messageId) {
+            loadMessageDetails(messageId);
+        } else {
+            console.error('Message ID not provided.');
+        }
+    });
+</script>
 
 </body>
 </html>

@@ -7,7 +7,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vertical Navigation Bar</title>
+<title>Inbox</title>
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -78,14 +78,14 @@
 </div>
 
 <div style="margin-left: 220px; padding: 20px;">
-    <ul class="message-list">
+    <ul id="messageList" class="message-list">
         <% 
            List<Message> messages = (List<Message>) request.getAttribute("messages");
            if (messages != null && !messages.isEmpty()) {
                for (Message message : messages) {
         %>
                    <li class="message-list-item">
-						<a href="<%= request.getContextPath() + "/" + request.getAttribute("folderName") + "/messageDetails?id=" + message.getMessageId() %>">
+						<a href="<%= request.getContextPath() + "/inbox/messageDetails?id=" + message.getMessageId() %>">
                            <h3><%= message.getSubject() %></h3>
                            <p><%= message.getDescription() %></p>
                            <p><em><%= message.getCreatedTime() %></em></p>
@@ -99,6 +99,51 @@
         <% } %>
     </ul>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Function to load messages via AJAX
+        function loadMessages() {
+            $.ajax({
+                type: 'GET',
+                url: '<%= request.getContextPath() %>/inboxMessages', // Endpoint to fetch inbox messages
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        $('#messageList').empty(); // Clear existing list
+                        if (response.data.messages.length > 0) {
+                            response.data.messages.forEach(function(message) {
+                                $('#messageList').append(
+                                    '<li class="message-list-item">' +
+                                    '<a href="<%= request.getContextPath() + "/inbox/messageDetails?id=" %>' + message.messageId + '">' +
+                                    '<h3>' + message.subject + '</h3>' +
+                                    '<p>' + message.description + '</p>' +
+                                    '<p><em>' + message.createdTime + '</em></p>' +
+                                    '</a>' +
+                                    '</li>'
+                                );
+                            });
+                        } else {
+                            $('#messageList').append('<li>No messages found.</li>');
+                        }
+                    } else {
+                        console.error('Failed to load messages:', response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading messages:', error);
+                }
+            });
+        }
+
+        loadMessages();
+
+        setInterval(function() {
+            loadMessages();
+        }, 30000); 
+    });
+</script>
 
 </body>
 </html>

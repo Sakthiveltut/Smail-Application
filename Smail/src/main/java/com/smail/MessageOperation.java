@@ -76,7 +76,7 @@ public class MessageOperation {
 	
 	private final static String GROUP_BY = "GROUP BY m.id;";
 	
-	User currentUser = CurrentUser.get();
+	User currentUser = UserDatabase.getCurrentUser();
 	
 	/*public void viewMessageOptions(String folderName) throws Exception{  
 		InputHandler inputHandler = new InputHandler();
@@ -441,7 +441,7 @@ public class MessageOperation {
 		Connection connection  = DBConnection.getConnection();
 		List<Message> messages = null;
 		try(PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())){
-			preparedStatement.setLong(1,CurrentUser.get().getUserId());
+			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
 			if(!"starred".equals(folderName)) {
 				preparedStatement.setString(2,folderName);
 			}
@@ -486,7 +486,7 @@ public class MessageOperation {
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())){
 			byte index=1;
-			preparedStatement.setLong(index++,CurrentUser.get().getUserId());
+			preparedStatement.setLong(index++,UserDatabase.getCurrentUser().getUserId());
 			if(!"starred".equals(folderName)) {
 				preparedStatement.setString(index++,folderName);
 			}
@@ -572,7 +572,7 @@ public class MessageOperation {
 		queryBuilder.append(GROUP_BY);
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())){
-			preparedStatement.setLong(1,CurrentUser.get().getUserId());
+			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
 			preparedStatement.setString(2,folderName);
 			preparedStatement.setLong(3,messageId);
 			try(ResultSet resultSet = preparedStatement.executeQuery()){
