@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONArray;
 
 import com.smail.custom_exception.InvalidEmailException;
 import com.smail.custom_exception.InvalidInputException;
@@ -429,7 +431,8 @@ public class MessageOperation {
 		}
 	}
 	
-	public static List<Message> getMessages(String folderName) throws Exception{
+	@SuppressWarnings("unchecked")
+	public static JSONArray getMessages(String folderName) throws Exception{
 		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
 		if(!Folder.getStarredName().equals(folderName)) {
 			queryBuilder.append(" AND f.name = ? ");
@@ -438,8 +441,8 @@ public class MessageOperation {
 			queryBuilder.append(" AND mf.is_starred = true ");
 		}
 		queryBuilder.append(GROUP_BY);
-		Connection connection  = DBConnection.getConnection();
-		List<Message> messages = null;
+		Connection connection = DBConnection.getConnection();
+		JSONArray messages = null;
 		try(PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())){
 			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
 			if(!"starred".equals(folderName)) {
@@ -447,7 +450,7 @@ public class MessageOperation {
 			}
 			try(ResultSet resultSet = preparedStatement.executeQuery()){
 				if(resultSet.isBeforeFirst()) {
-					messages = new ArrayList<>();
+					messages = new JSONArray();
 				}else {
 					return messages;
 				}
@@ -463,7 +466,20 @@ public class MessageOperation {
 		            boolean hasAttachment = resultSet.getBoolean("has_attachment");
 		            Timestamp createdTime = resultSet.getTimestamp("created_time");
 					
-		            messages.add(new Message(messageId,from,to,cc,subject,description,isRead,isStarred,hasAttachment,createdTime));
+		            JSONObject message = new JSONObject();
+		            message.put("id", messageId);
+		            message.put("sender_email", from);
+		            message.put("to_recipients", to);
+		            message.put("cc_recipients", cc);
+		            message.put("subject", subject);
+		            message.put("description", description);
+		            message.put("is_read", isRead);
+		            message.put("is_starred", isStarred);
+		            message.put("has_attachment", hasAttachment);
+		            message.put("created_time", createdTime.toString());
+		            
+		            messages.add(message);
+		            
 				}
 			}
 		}catch(Exception e){
@@ -472,48 +488,6 @@ public class MessageOperation {
 		}
         return messages;
 	}	
-	
-	public static Message getMessage(String folderName,long messageId) throws Exception{
-		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
-		if(!Folder.getStarredName().equals(folderName)) {
-			queryBuilder.append(" AND f.name = ? ");
-		}
-		else if(Folder.getStarredName().equals(folderName)) {
-			queryBuilder.append(" AND mf.is_starred = true ");
-		}
-		queryBuilder.append(" AND m.id = ? ");
-		queryBuilder.append(GROUP_BY);
-		Connection connection  = DBConnection.getConnection();
-		try(PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())){
-			byte index=1;
-			preparedStatement.setLong(index++,UserDatabase.getCurrentUser().getUserId());
-			if(!"starred".equals(folderName)) {
-				preparedStatement.setString(index++,folderName);
-			}
-			preparedStatement.setLong(index++,messageId);
-			try(ResultSet resultSet = preparedStatement.executeQuery()){
-
-				if(resultSet.next()){
-					messageId = resultSet.getInt("id");
-					String from = resultSet.getString("sender_email");
-					String to = resultSet.getString("to_recipients");
-		            String cc = resultSet.getString("cc_recipients");
-		            String subject = resultSet.getString("subject");
-		            String description = resultSet.getString("description");
-		            boolean isRead = resultSet.getBoolean("is_read");
-		            boolean isStarred = resultSet.getBoolean("is_starred");
-		            boolean hasAttachment = resultSet.getBoolean("has_attachment");
-		            Timestamp createdTime = resultSet.getTimestamp("created_time");
-					
-		            return new Message(messageId,from,to,cc,subject,description,isRead,isStarred,hasAttachment,createdTime);
-				}
-			}
-		}catch(Exception e){
-			e.printStackTrace();
-			throw new Exception("An error occurred while trying to show message. Please try again later. Error details: "+ e.getMessage());
-		}
-        return null;
-	}
 	
 	public List<Message> getSearchedMessages(String folderName,String searchedkeyword) throws Exception{
 		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
@@ -564,7 +538,7 @@ public class MessageOperation {
 		return messages;
 	}
 	
-	public static Message getMessage(String folderName,Long messageId) throws Exception{
+	/*public static Message getMessage(String folderName,Long messageId) throws Exception{
 		
 		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
 		queryBuilder.append(" AND f.name = ? ");
@@ -597,7 +571,7 @@ public class MessageOperation {
 			throw new Exception("An error occurred while trying to show message. Please try again later. Error details: "+ e.getMessage());
 		}
 		return null;
-	}
+	}*/
 	
 	public void changeMessageFolderId(Long user_id,long message_id,byte oldFolderId,byte binFolderId) throws Exception{
 		String query = "update MessageFolders set folder_id=? where user_id = ? and message_id = ? and folder_id=?";

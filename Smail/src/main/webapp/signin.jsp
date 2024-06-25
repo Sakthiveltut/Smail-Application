@@ -55,17 +55,26 @@
                     data: $(this).serialize(),
                     dataType: 'json',
                     success: function(response) {
-                        if (response.success) {
-                            $('#signInMessage').html('<p style="color: green;">' + response.data.message + '</p>');
+                    	if(response.response_status.status_code==200){
+                            $('#signInMessage').html('<p style="color: green;">' + response.response_status.message + '</p>');
                             setTimeout(function() {
-                                window.location.href = '<%= request.getContextPath() %>/home.jsp';
+                                window.location.href = '/Smail/home.jsp';
                             }, 2000);
-                        } else {
-                            $('#signInMessage').html('<p style="color: red;">' + response.data.message + '</p>');
-                        }
+                    	}else{
+                            $('#signInMessage').html('<p style="color: red;">' + response.response_status.message + '</p>');
+                    	}
                     },
-                    error: function(xhr, status, error) {
-                        $('#signInMessage').html('<p style="color: red;">An unexpected error occurred. Please try again later.</p>');
+                    error: function(xhr) {
+                        try {
+                            var responseJson = JSON.parse(xhr.responseText); 
+                            var errorMessage = responseJson.data.message;
+                            if (errorMessage) {
+                                $('#signInMessage').html('<p style="color: red;">' + errorMessage + '</p>');
+                            }
+                        } catch (e) {
+                            console.error('Error parsing JSON:', e);
+                            $('#signInMessage').html('<p style="color: red;">An unexpected error occurred. Please try again later.</p>');
+                        }
                     }
                 });
             });

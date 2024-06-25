@@ -103,15 +103,15 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $(document).ready(function() {
-        // Function to load messages via AJAX
+
         function loadMessages() {
             $.ajax({
                 type: 'GET',
-                url: '<%= request.getContextPath() %>/inboxMessages', // Endpoint to fetch inbox messages
+                url: '<%= request.getContextPath() %>/inboxMessages', 
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        $('#messageList').empty(); // Clear existing list
+                        $('#messageList').empty(); 
                         if (response.data.messages.length > 0) {
                             response.data.messages.forEach(function(message) {
                                 $('#messageList').append(

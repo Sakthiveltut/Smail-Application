@@ -18,6 +18,8 @@ import com.smail.custom_exception.InvalidInputException;
 
 @WebServlet("/")
 public class Smail extends HttpServlet {
+	
+	private static final String STATUS_SUCCESS = "success", STATUS_FAILED = "failed";
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -71,11 +73,11 @@ public class Smail extends HttpServlet {
                 messageId = Long.parseLong(messageIdStr);
             }
             Message message = MessageOperation.getMessage(folderName, messageId);
-            sendJsonResponse(response, HttpServletResponse.SC_OK, message);
+            //jsonResponse(response, HttpServletResponse.SC_OK, message);
         } catch (NumberFormatException e) {
-            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, "Please check the URL and try again. " + e.getMessage());
+           // sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, "Please check the URL and try again. " + e.getMessage());
         } catch (Exception e) {
-            sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later. Error details: " + e.getMessage());
+            //sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later. Error details: " + e.getMessage());
         }
     }
 
@@ -84,39 +86,37 @@ public class Smail extends HttpServlet {
         String smail = request.getParameter("smail");
         String password = request.getParameter("password");
         String confirmPassword = request.getParameter("confirmPassword");
-
         if (!password.equals(confirmPassword)) {
-            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, "Password mismatch.");
+        	jsonResponse(response, HttpServletResponse.SC_BAD_REQUEST,STATUS_FAILED ,"Password mismatch.", null);
             return;
         }
             try {
 				if (Authentication.signUp(name, smail, password)) {
-				    sendSuccessResponse(response, "Sign up successful. Please sign in.");
-				} else {
-				    sendErrorResponse(response, HttpServletResponse.SC_CONFLICT, "That email id is taken. Try another.");
+					jsonResponse(response,HttpServletResponse.SC_OK,STATUS_SUCCESS,"Sign up successful. Please sign in.", null);
 				}
 			} catch (InvalidInputException e) {
-	            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, "An unexpected error occurred. Please try again later. Error details: " + e.getMessage());
+				jsonResponse(response, HttpServletResponse.SC_BAD_REQUEST,STATUS_FAILED, e.getMessage(),null);
 			} catch (EmailAlreadyExistsException e) {
-	            sendErrorResponse(response, HttpServletResponse.SC_CONFLICT, "An unexpected error occurred. Please try again later. Error details: " + e.getMessage());
+				jsonResponse(response, HttpServletResponse.SC_CONFLICT,STATUS_FAILED, e.getMessage(),null);
 			} catch (Exception e) {
-	            sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later. Error details: " + e.getMessage());
+				jsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED,e.getMessage(),null);
 			}
     }
 
     private void signIn(HttpServletRequest request, HttpServletResponse response) {
         String smail = request.getParameter("smail");
         String password = request.getParameter("password");
-
         try {
             User user = Authentication.signIn(smail, password);
             HttpSession session = request.getSession();
             session.setAttribute("user", user);
-            sendSuccessResponse(response, "Sign in successful.");
-        } catch (AuthenticationFailedException e) {
-            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
+            jsonResponse(response,HttpServletResponse.SC_OK,STATUS_SUCCESS, "Sign in successful.", null);
+        } catch (InvalidInputException e) {
+        	jsonResponse(response, HttpServletResponse.SC_BAD_REQUEST,STATUS_FAILED, e.getMessage(),null);
+        }  catch (AuthenticationFailedException e) {
+        	jsonResponse(response, HttpServletResponse.SC_UNAUTHORIZED,STATUS_FAILED, e.getMessage(), null);
         } catch (Exception e) {
-            sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later. Error details: " + e.getMessage());
+        	jsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED, e.getMessage(),null);
         }
     }
 
@@ -125,33 +125,44 @@ public class Smail extends HttpServlet {
         try {
             if (session != null && session.getAttribute("user") != null) {
                 List<Message> messages = MessageOperation.getMessages(folderName);
-                sendJsonResponse(response, HttpServletResponse.SC_OK, messages);
+                //sendJsonResponse(response, HttpServletResponse.SC_OK, messages);
             } else {
-                sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "User session expired. Please sign in again.");
+                //sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "User session expired. Please sign in again.");
             }
         } catch (Exception e) {
-            sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later. Error details: " + e.getMessage());
+			jsonResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED,e.getMessage(),null);
+            //sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later. Error details: " + e.getMessage());
         }
     }
 
     private void signOut(HttpServletRequest request, HttpServletResponse response) {
         HttpSession session = request.getSession();
         session.invalidate();
-        sendSuccessResponse(response, "Sign out successful.");
+        jsonResponse(response,HttpServletResponse.SC_OK,STATUS_SUCCESS, "Sign out successful.", null);
     }
 
-    private void sendJsonResponse(HttpServletResponse response, int statusCode, Object responseObject) throws IOException {
-        response.setStatus(statusCode);
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        PrintWriter out = response.getWriter();
+    @SuppressWarnings("unchecked")
+	private void jsonResponse(HttpServletResponse response, int statusCode,String status,String message, JSONObject jsonData){
+        PrintWriter out = null;
+		try {
+			out = response.getWriter();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+        JSONObject response_status = new JSONObject();
+        response_status.put("status_code", statusCode);
+        response_status.put("status", status);
+        response_status.put("message", message);
+        
         JSONObject jsonResponse = new JSONObject();
-        jsonResponse.put("data", responseObject);
-        out.print(jsonResponse.toJSONString());
+        jsonResponse.put("response_status", response_status);
+        jsonResponse.put("data", jsonData);
+        System.out.println(jsonResponse);
+        out.print(jsonResponse);
         out.flush();
     }
 
-    private void sendSuccessResponse(HttpServletResponse response, String message) {
+    /*private void sendSuccessResponse(HttpServletResponse response, String message) {
         try {
             JSONObject jsonResponse = new JSONObject();
             jsonResponse.put("success", true);
@@ -171,11 +182,8 @@ public class Smail extends HttpServlet {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
+    }*/
 }
-
-
-
 
 
 

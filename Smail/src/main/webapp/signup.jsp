@@ -57,21 +57,35 @@
                     data: $(this).serialize(),
                     dataType: 'json',
                     success: function(response) {
-                        if (response.success) {
-                            $('#signupMessage').html('<p style="color: green;">' + response.data.message + '</p>');
+                    	if(response.response_status.status_code==200){
+                            $('#signupMessage').html('<p style="color: green;">' + response.response_status.message + '</p>');
                             setTimeout(function() {
-                                window.location.href = '<%= request.getContextPath() %>/signin.jsp';
+                                window.location.href = '/Smail/signin.jsp';
                             }, 2000);
-                        } else {
-                            $('#signupMessage').html('<p style="color: red;">' + response.data.message + '</p>');
-                        }
+                    	}else{
+                            $('#signupMessage').html('<p style="color: red;">' + response.response_status.message + '</p>');
+                    	}
                     },
-                    error: function(xhr, status, error) {
-                        $('#signupMessage').html('<p style="color: red;">An unexpected error occurred. Please try again later.</p>');
+                    error: function(error) {
+                        $('#signupMessage').html('<p style="color: red;">' + error + '</p>');
                     }
                 });
             });
         });
     </script>
+    
+    
+    <!-- error: function(xhr) {
+       try {
+           var responseJson = JSON.parse(xhr.responseText); 
+           var errorMessage = responseJson.data.message;
+           if (errorMessage) {
+               $('#signupMessage').html('<p style="color: red;">' + errorMessage + '</p>');
+           }
+       } catch (e) {
+           console.error('Error parsing JSON:', e);
+           $('#signupMessage').html('<p style="color: red;">An unexpected error occurred. Please try again later.</p>');
+       }
+   } -->
 </body>
 </html>

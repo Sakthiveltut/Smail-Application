@@ -18,7 +18,7 @@ public class Validator{
 		//if(Pattern.compile("^((?=[a-z0-9]*[a-z])[a-z0-9]+(\\.[a-z0-9]+)*){6,30}@[a-z]+(\\.[a-z]+)+$").matcher(email).find()){
 			return true;
 		}else{
-			throw new InvalidInputException("\033[31m"+"\n"+email+" is invalid."+"\033[0m");
+			throw new InvalidInputException(email+" is invalid.");
 		}
 	}
 	
@@ -36,7 +36,7 @@ public class Validator{
 		//if(Pattern.compile("^((?=[a-z0-9]*[a-z])[a-z0-9]+(\\.[a-z0-9]+)*){6,30}@smail(\\.)com$").matcher(email).find()){
 			return true;
 		}else{
-			throw new InvalidInputException("\033[31m"+"\n"+email+" is invalid."+"\033[0m");
+			throw new InvalidInputException(email+" is invalid.");
 		}
 	}
 	
@@ -45,7 +45,7 @@ public class Validator{
 		//if(Pattern.compile("^((?=[a-z0-9]*[a-z])[a-z0-9]+(\\.[a-z0-9]+)*){6,30}@smail(\\.)com$").matcher(email).find()){
 			return true;
 		}else if(showError){
-			throw new InvalidInputException("\033[31m"+"\n"+email+" is invalid."+"\033[0m");
+			throw new InvalidInputException(email+" is invalid.");
 		}
 		return false;
 	}
@@ -54,7 +54,7 @@ public class Validator{
 		if(Pattern.compile("^(?!\\s)(?=.*[A-Z])(?=.*[0-9])(?=.*[\\W]).{8,100}(?<!\\s)$").matcher(password).find()){
 			return true;
 		}else{
-			throw new InvalidInputException("\033[31m"+"\nPlease enter a valid password"+"\033[0m");
+			throw new InvalidInputException("\nPlease enter a valid password");
 		}
 	}
 }

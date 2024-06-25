@@ -11,7 +11,7 @@ import com.smail.custom_exception.InvalidInputException;
 
 public class Authentication {
 	
-	public static boolean signUp(String name,String email,String password) throws InvalidInputException, EmailAlreadyExistsException, Exception{
+	public static boolean signUp(String name,String email,String password) throws Exception{
 		if(Validator.isValidName(name)){
 			if(Validator.isValidEmail(email)) {
 				User user = UserDatabase.userExists(email);
@@ -19,11 +19,11 @@ public class Authentication {
 					user = UserDatabase.setUser(email);
 					UserDatabase.setUserDetails(user.getUserId(),name,password);
 					Folder.assignDefaultFolders(user.getUserId());
-					System.out.println("\u001B[32m"+"Account created successfully."+"\u001B[0m");
+					System.out.println("Account created successfully.");
 					return true;
 				}else if(!UserDatabase.isRegisteredUser(user.getUserId())) {
 					UserDatabase.setUserDetails(user.getUserId(), name, password);
-					System.out.println("\u001B[32m"+"Account created successfully."+"\u001B[0m");
+					System.out.println("Account created successfully.");
 					return true;
 				}else
 					throw new EmailAlreadyExistsException("That email id is taken.Try another.");
@@ -32,7 +32,7 @@ public class Authentication {
 		return false;
 	}
 	
-	public static User signIn(String email,String password) throws Exception{
+	public static User signIn(String email,String password) throws InvalidInputException, AuthenticationFailedException, Exception{
 		if(Validator.isValidSmail(email)){
 			User user = UserDatabase.userExists(email);
 			if(user!=null && user.getPassword()!=null && user.getPassword().equals(password)) {
