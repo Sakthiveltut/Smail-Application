@@ -57,7 +57,7 @@
                     data: $(this).serialize(),
                     dataType: 'json',
                     success: function(response) {
-                    	if(response.response_status.status_code==200){
+                    	if(response.response_status.status === "success"){
                             $('#signupMessage').html('<p style="color: green;">' + response.response_status.message + '</p>');
                             setTimeout(function() {
                                 window.location.href = '/Smail/signin.jsp';

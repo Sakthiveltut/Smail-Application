@@ -468,9 +468,9 @@ public class MessageOperation {
 					
 		            JSONObject message = new JSONObject();
 		            message.put("id", messageId);
-		            message.put("sender_email", from);
-		            message.put("to_recipients", to);
-		            message.put("cc_recipients", cc);
+		            message.put("from", from);
+		            message.put("to", to);
+		            message.put("cc", cc);
 		            message.put("subject", subject);
 		            message.put("description", description);
 		            message.put("is_read", isRead);
@@ -538,7 +538,8 @@ public class MessageOperation {
 		return messages;
 	}
 	
-	/*public static Message getMessage(String folderName,Long messageId) throws Exception{
+	@SuppressWarnings("unchecked")
+	public static JSONObject getMessage(String folderName,Long messageId) throws Exception{
 		
 		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
 		queryBuilder.append(" AND f.name = ? ");
@@ -562,7 +563,19 @@ public class MessageOperation {
 		            boolean hasAttachment = resultSet.getBoolean("has_attachment");
 		            Timestamp createdTime = resultSet.getTimestamp("created_time");
 		            
-					return new Message(messageId,from,to,cc,subject,description,isRead,isStarred,hasAttachment,createdTime);
+		            JSONObject message = new JSONObject();
+		            message.put("id", messageId);
+		            message.put("from", from);
+		            message.put("to", to);
+		            message.put("cc", cc);
+		            message.put("subject", subject);
+		            message.put("description", description);
+		            message.put("is_read", isRead);
+		            message.put("is_starred", isStarred);
+		            message.put("has_attachment", hasAttachment);
+		            message.put("created_time", createdTime.toString());
+		            
+					return message;
 				}else
 					System.out.println("Message id not found");
 			}
@@ -571,7 +584,7 @@ public class MessageOperation {
 			throw new Exception("An error occurred while trying to show message. Please try again later. Error details: "+ e.getMessage());
 		}
 		return null;
-	}*/
+	}
 	
 	public void changeMessageFolderId(Long user_id,long message_id,byte oldFolderId,byte binFolderId) throws Exception{
 		String query = "update MessageFolders set folder_id=? where user_id = ? and message_id = ? and folder_id=?";

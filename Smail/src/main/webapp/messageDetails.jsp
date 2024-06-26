@@ -93,7 +93,7 @@
         function loadMessageDetails(messageId) {
             $.ajax({
                 type: 'GET',
-                url: '<%= request.getContextPath() %>/messageDetails?id=' + messageId, // Endpoint to fetch message details
+                url: '<%= request.getContextPath() %>/messageDetails?id=' + messageId, 
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
