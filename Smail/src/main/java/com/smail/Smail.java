@@ -15,49 +15,79 @@ import org.json.simple.JSONObject;
 
 import com.smail.custom_exception.AuthenticationFailedException;
 import com.smail.custom_exception.EmailAlreadyExistsException;
+import com.smail.custom_exception.InvalidEmailException;
 import com.smail.custom_exception.InvalidInputException;
+
 
 @WebServlet("/")
 public class Smail extends HttpServlet {
 	
 	private static final String STATUS_SUCCESS = "success", STATUS_FAILED = "failed";
+	private MessageOperation messageOperation = new MessageOperation();
+
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response){
         String action = request.getServletPath();
-
-        if (("/" + Folder.getInboxName()).equals(action)) {
-            displayMessages(request, response, Folder.getInboxName());
-        } else if (("/" + Folder.getSentName()).equals(action)) {
-            displayMessages(request, response, Folder.getSentName());
-        } else if (("/" + Folder.getDraftName()).equals(action)) {
-            displayMessages(request, response, Folder.getDraftName());
-        } else if (("/" + Folder.getSpamName()).equals(action)) {
-            displayMessages(request, response, Folder.getSpamName());
-        } else if (("/" + Folder.getBinName()).equals(action)) {
-            displayMessages(request, response, Folder.getBinName());
-        } else if (("/" + Folder.getStarredName()).equals(action)) {
-            displayMessages(request, response, Folder.getStarredName());
-            
-        } else if ((("/" + Folder.getInboxName()) + "/messageDetails").equals(action)) {
-            displayMessageDetails(request, response, Folder.getInboxName());
-        } else if ((("/" + Folder.getSentName()) + "/messageDetails").equals(action)) {
-            displayMessageDetails(request, response, Folder.getSentName());
-        } else if ((("/" + Folder.getDraftName()) + "/messageDetails").equals(action)) {
-            displayMessageDetails(request, response, Folder.getDraftName());
-        } else if ((("/" + Folder.getSpamName()) + "/messageDetails").equals(action)) {
-            displayMessageDetails(request, response, Folder.getSpamName());
-        } else if ((("/" + Folder.getBinName()) + "/messageDetails").equals(action)) {
-            displayMessageDetails(request, response, Folder.getBinName());
-        } else if ((("/" + Folder.getStarredName()) + "/messageDetails").equals(action)) {
-            displayMessageDetails(request, response, Folder.getStarredName());
-            
-        } else if ("/signout".equals(action)) {
-            signOut(request, response);
+        
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute("user") != null) {
+        
+	        if (("/" + Folder.getInboxName()).equals(action)) {
+	            displayMessages(request, response, Folder.getInboxName());
+	        } else if (("/" + Folder.getSentName()).equals(action)) {
+	            displayMessages(request, response, Folder.getSentName());
+	        } else if (("/" + Folder.getDraftName()).equals(action)) {
+	            displayMessages(request, response, Folder.getDraftName());
+	        } else if (("/" + Folder.getSpamName()).equals(action)) {
+	            displayMessages(request, response, Folder.getSpamName());
+	        } else if (("/" + Folder.getBinName()).equals(action)) {
+	            displayMessages(request, response, Folder.getBinName());
+	        } else if (("/" + Folder.getStarredName()).equals(action)) {
+	            displayMessages(request, response, Folder.getStarredName());
+	            
+	        } else if ((("/" + Folder.getInboxName()) + "/messageDetails").equals(action)) {
+	            displayMessageDetails(request, response, Folder.getInboxName());
+	        } else if ((("/" + Folder.getSentName()) + "/messageDetails").equals(action)) {
+	            displayMessageDetails(request, response, Folder.getSentName());
+	        } else if ((("/" + Folder.getDraftName()) + "/messageDetails").equals(action)) {
+	            displayMessageDetails(request, response, Folder.getDraftName());
+	        } else if ((("/" + Folder.getSpamName()) + "/messageDetails").equals(action)) {
+	            displayMessageDetails(request, response, Folder.getSpamName());
+	        } else if ((("/" + Folder.getBinName()) + "/messageDetails").equals(action)) {
+	            displayMessageDetails(request, response, Folder.getBinName());
+	        } else if ((("/" + Folder.getStarredName()) + "/messageDetails").equals(action)) {
+	            displayMessageDetails(request, response, Folder.getStarredName());
+	            
+	        } else if (("/send").equals(action)) {
+	        	sendMessage(request, response,"send");
+	        	
+	        } else if ("/signout".equals(action)) {
+	            signOut(request, response);
+	        }
+     
+        } else {
+        	sendResponse(response, HttpServletResponse.SC_UNAUTHORIZED,STATUS_FAILED, "User session expired. Please sign in again.",null);
         }
     }
 
-    @Override
+    private void sendMessage(HttpServletRequest request, HttpServletResponse response, String string) {
+    	String to = request.getParameter("to");
+    	String cc = request.getParameter("cc");
+    	String subject = request.getParameter("subject");
+    	String description = request.getParameter("description");
+    	messageOperation.inputMessageDetails(to,cc,subject,description);
+		try {
+			Message message = messageOperation.createMessage();
+			messageOperation.sendMessage(Folder.getSentName(), message);
+		} catch (InvalidInputException | InvalidEmailException e) {
+			sendResponse(response, HttpServletResponse.SC_BAD_REQUEST,STATUS_FAILED, e.getMessage(),null);
+		} catch (Exception e) {
+        	sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED, e.getMessage(),null);
+		}	
+    }
+
+	@Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) {
         String action = request.getServletPath();
 
@@ -124,15 +154,10 @@ public class Smail extends HttpServlet {
     }
 
     private void displayMessages(HttpServletRequest request, HttpServletResponse response, String folderName) {
-        HttpSession session = request.getSession(false);
         try {
-            if (session != null && session.getAttribute("user") != null) {
-				request.setAttribute("folderName", folderName);
-                JSONArray messages = MessageOperation.getMessages(folderName);
-                sendResponse(response, HttpServletResponse.SC_OK,STATUS_SUCCESS,null, messages);
-            } else {
-            	sendResponse(response, HttpServletResponse.SC_UNAUTHORIZED,STATUS_FAILED, "User session expired. Please sign in again.",null);
-            }
+			request.setAttribute("folderName", folderName);
+            JSONArray messages = MessageOperation.getMessages(folderName);
+            sendResponse(response, HttpServletResponse.SC_OK,STATUS_SUCCESS,null, messages);
         } catch (Exception e) {
         	sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED,e.getMessage(),null);
         }

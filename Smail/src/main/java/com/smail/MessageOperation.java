@@ -170,15 +170,12 @@ public class MessageOperation {
 		}
 	}
 
-	/*public void inputMessageDetails() {
-		InputHandler inputHandler = new InputHandler();
-		System.out.print(FROM+currentUser.getEmail());
-		to = inputHandler.readString(TO);
-		cc = inputHandler.readString(CC);
-		subject = inputHandler.readString(SUBJECT);
-		description = inputHandler.readString(DESCRIPTION);
-		attachments = inputHandler.readString(ATTACHMENTS);
-	}*/
+	public void inputMessageDetails(String to,String cc,String subject,String description) {
+		this.to = to;
+		this.cc = cc;
+		this.subject = subject;
+		this.description = description;
+	}
 	
 	public boolean isValidMessage() throws InvalidInputException {
 		if(!to.isEmpty()){
@@ -207,7 +204,7 @@ public class MessageOperation {
 		return false;
 	}
 
-	public Message createMessage() throws Exception {
+	public Message createMessage() throws InvalidInputException, Exception {
 		if(isValidMessage()) {
 			long messageId = setMessage(currentUser.getUserId(),subject,description);
 			setToRecipients(messageId);
@@ -257,7 +254,7 @@ public class MessageOperation {
 		}
 	}
 	
-	public void sendMessage(String folderName,Message message) throws Exception {
+	public void sendMessage(String folderName,Message message) throws InvalidEmailException, Exception{
 		if(message!=null) {
 			if(folderName.equals(Folder.getSentName())) {
 				setMessageFolder(currentUser.getUserId(),message.getMessageId(),Folder.getFolderId(Folder.getSentName()));
@@ -478,8 +475,7 @@ public class MessageOperation {
 		            message.put("has_attachment", hasAttachment);
 		            message.put("created_time", createdTime.toString());
 		            
-		            messages.add(message);
-		            
+		            messages.add(message); 
 				}
 			}
 		}catch(Exception e){
