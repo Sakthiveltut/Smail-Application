@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.util.HashMap;
 import java.util.Map;
 
+
 public class RecipientType {
 	
 	private static Map<String,Byte> recipientTypes = new HashMap<>();

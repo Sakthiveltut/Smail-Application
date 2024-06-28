@@ -1,5 +1,6 @@
 package com.smail;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
@@ -12,6 +13,8 @@ import javax.servlet.http.HttpSession;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import com.smail.custom_exception.AuthenticationFailedException;
 import com.smail.custom_exception.EmailAlreadyExistsException;
@@ -22,9 +25,19 @@ import com.smail.custom_exception.InvalidInputException;
 @WebServlet("/")
 public class Smail extends HttpServlet {
 	
+	@Override
+	public void init() throws ServletException {
+		try {
+			Folder.setFolders();
+			RecipientType.setRecipientTypes();
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			e.printStackTrace();
+		}
+	}
+	
 	private static final String STATUS_SUCCESS = "success", STATUS_FAILED = "failed";
 	private MessageOperation messageOperation = new MessageOperation();
-
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response){
@@ -59,9 +72,6 @@ public class Smail extends HttpServlet {
 	        } else if ((("/" + Folder.getStarredName()) + "/messageDetails").equals(action)) {
 	            displayMessageDetails(request, response, Folder.getStarredName());
 	            
-	        } else if (("/send").equals(action)) {
-	        	sendMessage(request, response,"send");
-	        	
 	        } else if ("/signout".equals(action)) {
 	            signOut(request, response);
 	        }
@@ -71,18 +81,56 @@ public class Smail extends HttpServlet {
         }
     }
 
-    private void sendMessage(HttpServletRequest request, HttpServletResponse response, String string) {
-    	String to = request.getParameter("to");
-    	String cc = request.getParameter("cc");
-    	String subject = request.getParameter("subject");
-    	String description = request.getParameter("description");
+    private void sendMessage(HttpServletRequest request, HttpServletResponse response, String messageType) {
+    	System.out.println("sendMessage");
+		StringBuilder sb = new StringBuilder();
+		BufferedReader reader;
+		try {
+			reader = request.getReader();
+			String line;
+			while ((line = reader.readLine()) != null) {
+				sb.append(line);}
+		} catch (IOException e) {
+			sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED,e.getMessage(),null);
+			return;
+		}
+    	System.out.println("Data"+sb.toString());
+    	
+        if (sb.toString().isEmpty()) {
+            sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, "Empty request body", null);
+            return;
+        }
+
+		JSONParser parser = new JSONParser();
+		JSONObject jsonObject = null;
+		try {
+			jsonObject = (JSONObject) parser.parse(sb.toString());
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+    	
+    	String to = (String)jsonObject.get("to");
+    	String cc = (String)jsonObject.get("cc");
+    	String subject = (String)jsonObject.get("subject");
+    	String description = (String)jsonObject.get("description");
+    	System.out.println(messageType+"  "+to);
     	messageOperation.inputMessageDetails(to,cc,subject,description);
 		try {
-			Message message = messageOperation.createMessage();
-			messageOperation.sendMessage(Folder.getSentName(), message);
+			JSONObject message = null;
+			if("newMessage".equals(messageType)) {
+				 message = messageOperation.createMessage();
+			}else if("draftMessage".equals(messageType)) {
+		    	String messageId = request.getParameter("id");
+		    	if(messageId!=null) {
+					message = messageOperation.getMessage(Folder.getDraftName(),Long.parseLong(messageId));
+		    	}
+			}
+			messageOperation.sendMessage(messageType, message);
+            sendResponse(response, HttpServletResponse.SC_OK,STATUS_SUCCESS, null, message);
 		} catch (InvalidInputException | InvalidEmailException e) {
 			sendResponse(response, HttpServletResponse.SC_BAD_REQUEST,STATUS_FAILED, e.getMessage(),null);
 		} catch (Exception e) {
+			e.printStackTrace();
         	sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED, e.getMessage(),null);
 		}	
     }
@@ -95,6 +143,8 @@ public class Smail extends HttpServlet {
             signUp(request, response);
         } else if ("/signin".equals(action)) {
             signIn(request, response);
+        } else if ("/newMessage".equals(action)) {
+        	sendMessage(request, response,"newMessage");
         }
     }
 
@@ -105,7 +155,7 @@ public class Smail extends HttpServlet {
             if (messageIdStr != null) {
                 messageId = Long.parseLong(messageIdStr);
             }
-            JSONObject message = MessageOperation.getMessage(folderName, messageId);
+            JSONObject message = messageOperation.getMessage(folderName, messageId);
             sendResponse(response, HttpServletResponse.SC_OK,STATUS_SUCCESS, null, message);
         } catch (NumberFormatException e) {
         	sendResponse(response, HttpServletResponse.SC_BAD_REQUEST,STATUS_FAILED,"Please check the URL and try again. " + e.getMessage(),null);
@@ -119,7 +169,7 @@ public class Smail extends HttpServlet {
         String smail = request.getParameter("smail");
         String password = request.getParameter("password");
         String confirmPassword = request.getParameter("confirmPassword");
-        if (!password.equals(confirmPassword)) {
+        if (password!=null && !password.equals(confirmPassword)) {
         	sendResponse(response, HttpServletResponse.SC_BAD_REQUEST,STATUS_FAILED ,"Password mismatch.", null);
             return;
         }
@@ -171,7 +221,9 @@ public class Smail extends HttpServlet {
 
     @SuppressWarnings("unchecked")
 	private void sendResponse(HttpServletResponse response, int statusCode,String status,String message, Object jsonData){
-
+        response.setContentType("application/json");
+        response.setStatus(statusCode);
+        
         JSONObject response_status = new JSONObject();
         response_status.put("status_code", statusCode);
         response_status.put("status", status);
@@ -181,9 +233,9 @@ public class Smail extends HttpServlet {
         jsonResponse.put("response_status", response_status);
         jsonResponse.put("data", jsonData);
         System.out.println(jsonResponse);
-        
+                
 		try(PrintWriter out = response.getWriter()) {
-	        out.print(jsonResponse);
+	        out.print(jsonResponse.toString());
 	        out.flush();
 		} catch (IOException e) {
 			e.printStackTrace();

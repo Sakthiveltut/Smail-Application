@@ -8,7 +8,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
 public class Folder {
+	
 	private static Map<String,Byte> folders = new HashMap<String,Byte>();
 	
 	private static final String INBOX = "inbox", STARRED = "starred", SENT = "sent", UNREAD = "unread", DRAFT = "draft", SPAM = "spam", BIN = "bin";

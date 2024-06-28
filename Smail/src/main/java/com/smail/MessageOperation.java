@@ -77,9 +77,7 @@ public class MessageOperation {
 			""";
 	
 	private final static String GROUP_BY = "GROUP BY m.id;";
-	
-	User currentUser = UserDatabase.getCurrentUser();
-	
+		
 	/*public void viewMessageOptions(String folderName) throws Exception{  
 		InputHandler inputHandler = new InputHandler();
 		long userId = currentUser.getUserId();
@@ -204,12 +202,23 @@ public class MessageOperation {
 		return false;
 	}
 
-	public Message createMessage() throws InvalidInputException, Exception {
+	@SuppressWarnings("unchecked")
+	public JSONObject createMessage() throws InvalidInputException, Exception {
 		if(isValidMessage()) {
-			long messageId = setMessage(currentUser.getUserId(),subject,description);
+			long messageId = setMessage(UserDatabase.getCurrentUser().getUserId(),subject,description);
 			setToRecipients(messageId);
 			setCcRecipients(messageId);
-			return new Message(messageId, currentUser.getEmail(), to, cc, subject, description, false, false, false, null);
+			JSONObject message = new JSONObject();
+			message.put("id", messageId);
+			message.put("from", UserDatabase.getCurrentUser().getEmail());
+			message.put("to", to);
+	        message.put("cc", cc);
+	        message.put("subject", subject);
+	        message.put("description", description);
+            message.put("is_read", false);
+            message.put("is_starred", false);
+            message.put("has_attachment", false);
+			return message;
 		}
 		return null;
 	}
@@ -254,15 +263,16 @@ public class MessageOperation {
 		}
 	}
 	
-	public void sendMessage(String folderName,Message message) throws InvalidEmailException, Exception{
+	public void sendMessage(String messageType,JSONObject message) throws InvalidEmailException, Exception{
 		if(message!=null) {
-			if(folderName.equals(Folder.getSentName())) {
-				setMessageFolder(currentUser.getUserId(),message.getMessageId(),Folder.getFolderId(Folder.getSentName()));
-			}else if(folderName.equals(Folder.getDraftName())) {
-				updateMessageFolder(currentUser.getUserId(),message.getMessageId(),Folder.getFolderId(Folder.getSentName()));
+			long messageId = (long)message.get("id");
+			if("newMessage".equals(messageType)) {
+				setMessageFolder(UserDatabase.getCurrentUser().getUserId(),messageId,Folder.getFolderId(Folder.getSentName()));
+			}else if("draftMessage".equals(messageType)) {
+				updateMessageFolder(UserDatabase.getCurrentUser().getUserId(),messageId,Folder.getFolderId(Folder.getSentName()));
 			}
 			String recipientFolderName;
-			if(SpamChecker.isSpam(message.getSubject()+" "+message.getDescription())) 
+			if(SpamChecker.isSpam((String)message.get("subject")+" "+(String)message.get("description"))) 
 				recipientFolderName = Folder.getSpamName();
 			else
 				recipientFolderName = Folder.getInboxName();
@@ -271,18 +281,19 @@ public class MessageOperation {
 			validCcRecipientIds = new HashSet<>();
 			unregisteredToRecipients = new HashSet<>();
 			unregisteredCcRecipients = new HashSet<>();
-			
-			String toEmails[] = message.getTo().split(",");
+			String to = (String) message.get("to");
+			String toEmails[] = to.split(",");
 			separateRecipientId(toEmails,validToRecipientIds,unregisteredToRecipients);
 			for(Long userId:validToRecipientIds){
-				setMessageFolder(userId,message.getMessageId(),Folder.getFolderId(recipientFolderName));
+				setMessageFolder(userId,messageId,Folder.getFolderId(recipientFolderName));
 			}
-			if(message.getCc()!=null) {
-				String ccEmails[] = message.getCc().split(",");
+			String cc = (String) message.get("cc");
+			if(cc!=null) {
+				String ccEmails[] = cc.split(",");
 				separateRecipientId(ccEmails,validCcRecipientIds,unregisteredCcRecipients);
 				for(Long userId:validCcRecipientIds){
 					if(!validToRecipientIds.contains(userId)) {//To reduce duplicate entries in the MessageFolders table, ensure that both the 'To' and 'Cc' fields contain the same email address.
-						setMessageFolder(userId,message.getMessageId(),Folder.getFolderId(recipientFolderName));
+						setMessageFolder(userId,messageId,Folder.getFolderId(recipientFolderName));
 					}
 				}
 			}
@@ -499,7 +510,7 @@ public class MessageOperation {
 		List<Message> messages=null;
 		try(PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())){
 			byte index = 1;
-			preparedStatement.setLong(index++,currentUser.getUserId());
+			preparedStatement.setLong(index++,UserDatabase.getCurrentUser().getUserId());
 			if(!Folder.getStarredName().equals(folderName)) {
 				preparedStatement.setString(index++,folderName);
 			}
@@ -535,7 +546,7 @@ public class MessageOperation {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static JSONObject getMessage(String folderName,Long messageId) throws Exception{
+	public JSONObject getMessage(String folderName,Long messageId) throws Exception{
 		
 		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
 		queryBuilder.append(" AND f.name = ? ");
@@ -606,7 +617,7 @@ public class MessageOperation {
 		String query = "delete from MessageFolders where user_id = ? and message_id = ? and folder_id = ?";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
-			preparedStatement.setLong(1,currentUser.getUserId());
+			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
 			preparedStatement.setLong(2,message_id);
 			preparedStatement.setByte(3,folderId);
 			int rowsCount = preparedStatement.executeUpdate();
@@ -625,7 +636,7 @@ public class MessageOperation {
 		String query = "update MessageFolders set is_starred= not is_starred where user_id = ? and message_id = ? and folder_id=?";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
-			preparedStatement.setLong(1,currentUser.getUserId());
+			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
 			preparedStatement.setLong(2,message_id);
 			preparedStatement.setLong(3,folderId);
 			int rowsCount = preparedStatement.executeUpdate();

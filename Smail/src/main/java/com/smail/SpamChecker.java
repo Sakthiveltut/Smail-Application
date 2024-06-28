@@ -13,7 +13,7 @@ public class SpamChecker{
 	}
 	
 	public static void loadSpamKeywords(){
-		try(BufferedReader br = new BufferedReader(new FileReader("D:\\Sakthi\\Eclipse Project\\changed project\\EmailApplication\\src\\email\\spam.txt"))){
+		try(BufferedReader br = new BufferedReader(new FileReader("D:\\Sakthi\\Github\\Smail-Application\\Smail\\src\\main\\java\\com\\smail\\spam.txt"))){
 			String line;
 			while((line=br.readLine())!=null){
 				spamKeywords.add(line);
