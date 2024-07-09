@@ -2,70 +2,96 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #333;
         }
         .signup-container {
-            width: 100%;
-            max-width: 400px;
             background-color: #fff;
-            padding: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        form {
-            margin-bottom: 1rem;
-        }
-        input, button, a {
-            display: block;
-            width: calc(100% - 2rem);
-            padding: 0.5rem;
-            margin: 0.5rem;
-            font-size: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 3px;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            max-width: 450px;
+            width: 100%;
             box-sizing: border-box;
         }
-        button, a {
-            background-color: #007bff;
+        h2 {
+            text-align: center;
+            color: #444;
+            margin-bottom: 1rem;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        input {
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            border-color: #667eea;
+        }
+        button {
+            padding: 0.75rem;
+            background-color: #667eea;
             color: white;
             border: none;
+            border-radius: 4px;
             cursor: pointer;
-            text-align: center;
-            text-decoration: none;
+            font-size: 1rem;
+            transition: background-color 0.3s;
         }
-        button:hover, a:hover {
-            background-color: #0056b3;
+        button:hover {
+            background-color: #5a67d8;
         }
         #signupMessage {
             text-align: center;
             margin-top: 1rem;
             font-size: 0.9rem;
         }
+        .signin-link {
+            text-align: center;
+            margin-top: 1rem;
+        }
+        .signin-link a {
+            color: #667eea;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .signin-link a:hover {
+            color: #5a67d8;
+        }
     </style>
 </head>
 <body>
     <div class="signup-container">
-        <h2 style="text-align: center;">Sign Up</h2>
+        <h2>Sign Up</h2>
         <form id="signupForm">
             <input type="text" id="name" name="name" placeholder="Name" pattern="^[A-Za-z]+( [A-Za-z]+)*$" required>
-            <input type="email" id="smail" name="smail" placeholder="example@smail.com" pattern="^[a-z0-9]+(\\.[a-z0-9]+)*@smail.com" required>
+            <input type="email" id="smail" name="smail" placeholder="example@smail.com" pattern="^[a-z0-9]+(\.[a-z0-9]+)*@smail.com" required>
             <input type="password" id="password" name="password" placeholder="Password" pattern="^(?=.*[A-Z])(?=.*[0-9])(?=.*[\W_]).{8,100}$" required>
             <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm Password" pattern="^(?=.*[A-Z])(?=.*[0-9])(?=.*[\W_]).{8,100}$" required>
             <button type="submit">Sign Up</button>
         </form>
         <div id="signupMessage"></div>
-        <a id="signInLink" href="/Smail/signin.jsp">Sign In</a>
+        <div class="signin-link">
+            <a id="signInLink" href="/Smail/signin.jsp">Already have an account? Sign In</a>
+        </div>
     </div>
     
     <script>
@@ -87,9 +113,16 @@
                             $('#signupMessage').html('<p style="color: red;">' + response.response_status.message + '</p>');
                         }
                     },
-                    error: function(error) {
-                        $('#signupMessage').html('<p style="color: red;">' + error + '</p>');
-                    }
+	                error: function(xhr, status, error) {
+	                    let message;
+	                    try {
+	                        const response = JSON.parse(xhr.responseText);
+	                        message = response.response_status.message || "An unknown error occurred.";
+	                    } catch (e) {
+	                        message = "An error occurred. Please try again.";
+	                    }
+	                    $('#signInMessage').html('<p style="color: red;">' + message + '</p>');
+	                }
                 });
             });
         });

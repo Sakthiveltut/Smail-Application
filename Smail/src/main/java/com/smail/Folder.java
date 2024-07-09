@@ -47,6 +47,10 @@ public class Folder {
 		return folders.get(folderName);
 	}
 	
+	public static Map<String,Byte> getFolders() {
+		return folders;
+	}
+	
 	public static void setFolders() throws Exception{
 		String query = "select id,name from Folders";
 		Connection connection  = DBConnection.getConnection();

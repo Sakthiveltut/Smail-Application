@@ -148,21 +148,21 @@ public class MessageOperation {
 		}
 	}*/
 	
-	private void updateDraftMessage(Message originalMessage) throws Exception {
+	public void updateDraftMessage(JSONObject originalMessage) throws Exception {
 		if(isValidMessage()) {
-			if(!originalMessage.getTo().equals(to)) {
-				deleteRecipient(originalMessage.getMessageId(),RecipientType.getRecipientType("to"));
-				setToRecipients(originalMessage.getMessageId());
+			if(!originalMessage.get("to").equals(to)) {
+				deleteRecipient((long)originalMessage.get("id"),RecipientType.getRecipientType("to"));
+				setToRecipients((long)originalMessage.get("id"));
 			}
-			if(!(originalMessage.getCc()==null && cc==null) || (originalMessage.getCc()!=null && !originalMessage.getCc().equals(cc))) {
-				deleteRecipient(originalMessage.getMessageId(),RecipientType.getRecipientType("cc"));
-				setCcRecipients(originalMessage.getMessageId());
+			if(!(originalMessage.get("cc")==null && cc==null) || (originalMessage.get("cc")!=null && !originalMessage.get("cc").equals(cc))) {
+				deleteRecipient((long)originalMessage.get("id"),RecipientType.getRecipientType("cc"));
+				setCcRecipients((long)originalMessage.get("id"));
 			}
-			if(!originalMessage.getSubject().equals(subject)) {
-				updateSubjectField(originalMessage.getMessageId(),subject);
+			if(!originalMessage.get("subject").equals(subject)) {
+				updateSubjectField((long)originalMessage.get("id"),subject);
 			}
-			if(!originalMessage.getDescription().equals(description)) {
-				updateDescriptionField(originalMessage.getMessageId(),description);
+			if(!originalMessage.get("description").equals(description)) {
+				updateDescriptionField((long)originalMessage.get("id"),description);
 			}
 			System.out.println("\u001B[32m"+"The draft message has been edited successfully.\n"+"\u001B[0m");
 		}
@@ -440,7 +440,7 @@ public class MessageOperation {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static JSONArray getMessages(String folderName) throws Exception{
+	public static JSONArray getMessages(String folderName) throws Exception{	
 		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
 		if(!Folder.getStarredName().equals(folderName)) {
 			queryBuilder.append(" AND f.name = ? ");
@@ -632,7 +632,7 @@ public class MessageOperation {
 		}
 	}
 
-	public void setStarredMessage(long message_id,byte folderId) throws Exception {
+	public void starredMessage(long message_id,byte folderId) throws Exception {
 		String query = "update MessageFolders set is_starred= not is_starred where user_id = ? and message_id = ? and folder_id=?";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){

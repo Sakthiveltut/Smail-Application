@@ -158,6 +158,19 @@
         .close-icon:hover {
             color: #333;
         }
+        .star-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #ccc;
+            font-size: 16px;
+        }
+        .star-button:hover {
+            color: gold;
+        }
+        .starred {
+            color: gold;
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -182,13 +195,14 @@
         
         <div id="composeMessage">
             <span class="close-icon" onclick="closeCompose()">×</span> 
-            <h2>Compose Message</h2>
+            <h2 id="composeHeading">Compose Message</h2>
             <form id="messageForm">
+                <input type="hidden" id="id" name="id"><br><br>
                 <input type="text" id="to" name="to" placeholder="To" required><br><br>
                 <input type="text" id="cc" name="cc" placeholder="CC"><br><br>
                 <input type="text" id="subject" name="subject" placeholder="Subject" required><br><br>
                 <textarea id="description" placeholder="Message Description" name="description" rows="6" required></textarea><br><br>
-                <button type="button" id="sendMessage" value="newMessage">Send</button>
+                <button type="button" id="sendMessage" value="sendMessage">Send</button>
                 <button type="button" id="saveDraft" value="draftMessage">Save as Draft</button>
             </form>
             <p id="composeError"></p>
@@ -219,6 +233,8 @@
                         html += "<p><strong>From:</strong> " + message.from + "</p>";
                         html += "<p><strong>To:</strong> " + message.to + "</p>";
                         html += "<p><strong>Created:</strong> " + message.created_time + "</p>";
+                        html += "<p><strong>Starred:</strong> " + message.is_starred + "</p>";
+                        html += "<p><strong>Unread:</strong> " + message.is_read + "</p>";
                         html += "</div>";
                         html += "<div>";
                         html += "<p><strong>Description:</strong><br>" + message.description + "</p>";
@@ -245,8 +261,36 @@
             $("#composeMessage").hide();
         }
 
-        function showCompose() {
+        function showCompose(headingText = "Compose Message") {
+            $("#composeHeading").text(headingText);
             $("#composeMessage").show();
+        }
+
+        function populateComposeForm(message) {
+            $('#id').val(message.id);
+            $('#to').val(message.to);
+            $('#cc').val(message.cc);
+            $('#subject').val(message.subject);
+            $('#description').val(message.description);
+            showCompose("Edit Message");
+        }
+        
+        function starMessage(path, buttonElement) {
+            $.ajax({
+                url: path,
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.response_status.status === 'success') {
+                        $(buttonElement).toggleClass('starred');
+                    } else {
+                        console.error('Failed to star message.');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error starring message:', error);
+                }
+            });
         }
 
         $(document).ready(function() {
@@ -256,8 +300,8 @@
                     type: "GET",
                     dataType: "json",
                     success: function(response) {
-                        if (response.response_status.status_code === 401 || option === "signout") {
-                            window.location.href = "/Smail/signup.jsp";
+                        if (response.response_status.status_code == 401 || option === "signout") {
+                            window.location.href = "/Smail/signin.jsp";
                             return;
                         }
                         if (response.response_status.status === "success") {
@@ -266,7 +310,14 @@
                                 var html = "<ul class='message-list'>";
                                 $.each(messages, function(index, message) {
                                     html += "<li class='message-list-item'>";
-                                    html += "<a href='#' onclick='showMessageDetails(\"" + message.id + "\")'>";
+                                    html += "<button class='star-button " + (message.is_starred ? "starred" : "") + "' onclick='starMessage(\"" + option + "/star?id=" + message.id + "\", this)'>";
+                                    html += "<i class='fa fa-star'></i>";
+                                    html += "</button>";
+                                    if (option === 'draft') {
+                                        html += "<a href='#' onclick='populateComposeForm(" + JSON.stringify(message) + ")'>";
+                                    } else {
+                                        html += "<a href='#' onclick='showMessageDetails(\"" + message.id + "\")'>";
+                                    }
                                     html += "<h3 class='message-subject'>" + message.subject + "</h3>";
                                     html += "<p class='message-attachment'>" + (message.has_attachment ? "Attachment: Yes" : "Attachment: No") + "</p>";
                                     html += "<em class='message-created-time'>" + message.created_time + "</em>";
@@ -309,16 +360,17 @@
 
             $('#sendMessage').click(function(e) {
                 e.preventDefault();
-                submitForm('newMessage');
+                submitForm('sendMessage');
             });
 
             $('#saveDraft').click(function(e) {
                 e.preventDefault();
-                submitForm('draftMessage');
+                submitForm('saveDraft');
             });
 
             function submitForm(action) {
                 var formData = {
+                	id: $('#id').val().trim(),	
                     to: $('#to').val().trim(),
                     cc: $('#cc').val().trim(),
                     subject: $('#subject').val().trim(),
@@ -332,24 +384,27 @@
                     dataType: 'json',
                     data: JSON.stringify(formData),
                     success: function(response) {
-                        try {
-                            if (response.response_status && response.response_status.status === "success") {
-                                alert('Message ' + (action === 'newMessage' ? 'sent' : 'saved as draft') + ' successfully!');
-                                closeCompose();
-                            } else {
-                            	console.log("else block");
-                                $('#composeError').text(response.response_status.message || 'Unknown error');
-                            }
-                        } catch (e) {
-                            $('#composeError').text('Error parsing JSON response');
+                        if (response.response_status && response.response_status.status === "success") {
+                            alert('Message ' + (action === 'sendMessage' ? 'sent' : 'saved as draft') + ' successfully!');
+                            closeCompose();
+                            location.reload();
+                        } else {
+                        	console.log("else block");
+                            $('#composeError').text(response.response_status.message || 'Unknown error');
                         }
                     },
-                    error: function(xhr, status, error) {
-                        $('#composeError').text('An error occurred: ' + error);
-                    }
+	                error: function(xhr, status, error) {
+	                    let message;
+	                    try {
+	                        const response = JSON.parse(xhr.responseText);
+	                        message = response.response_status.message || "An unknown error occurred.";
+	                    } catch (e) {
+	                        message = "An error occurred. Please try again.";
+	                    }
+	                    $('#composeError').html('<p style="color: red;">' + message + '</p>');
+	                }
                 });
             }
-
         });
     </script>
 </body>

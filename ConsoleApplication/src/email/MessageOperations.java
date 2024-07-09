@@ -110,7 +110,7 @@ public class MessageOperations {
 			}else if(STARRED_OPTION==choice && folderName!=Folder.getBinName()){
 				Long message_id = inputHandler.readLong(MESSAGE_ID);
 				if(message_id!=null) {
-					setStarredMessage(message_id,Folder.getFolderId(folderName));
+					starredMessage(message_id,Folder.getFolderId(folderName));
 				}
 			}else if(Folder.getSpamName().equals(folderName) && MOVE_TO_INBOX==choice) {
 				Long message_id = inputHandler.readLong(MESSAGE_ID);
@@ -595,7 +595,7 @@ public class MessageOperations {
 		}
 	}
 
-	public void setStarredMessage(long message_id,byte folderId) throws Exception {
+	public void starredMessage(long message_id,byte folderId) throws Exception {
 		String query = "update MessageFolders set is_starred= not is_starred where user_id = ? and message_id = ? and folder_id=?";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){

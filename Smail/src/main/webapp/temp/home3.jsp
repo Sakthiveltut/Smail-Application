@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inbox</title>
-     <style>
+    <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -115,20 +115,20 @@
             display: none;
         }
         #composeMessage {
-		    position: fixed;
-		    top: 50%;
-		    left: 50%;
-		    transform: translate(-50%, -50%);
-		    background-color: #fff;
-		    padding: 20px;
-		    border: 1px solid #ddd;
-		    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-		    z-index: 1000;
-		    max-width: 80%;
-		    width: 700px;
-		    box-sizing: border-box;
-		    display:none;
-		}
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-width: 80%;
+            width: 700px;
+            box-sizing: border-box;
+            display:none;
+        }
         #composeMessage input[type="text"], #composeMessage textarea {
             width: calc(100% - 20px);
             padding: 10px;
@@ -148,22 +148,22 @@
             background-color: #0056b3;
         }
         .close-icon {
-		    position: absolute;
-		    top: 10px;
-		    right: 10px;
-		    cursor: pointer;
-		    font-size: 30px;
-		    color: #666;
-		}
-		
-		.close-icon:hover {
-		    color: #333;
-		}
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 30px;
+            color: #666;
+        }
+        .close-icon:hover {
+            color: #333;
+        }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <div class="vertical-nav">
-       	<button id="compose"><i class="fa fa-pencil-alt"></i> Compose</button>
+        <button id="compose"><i class="fa fa-pencil-alt"></i> Compose</button>
         <button id="inbox" class="active"><i class="fa fa-inbox"></i> Inbox</button>
         <button id="starred"><i class="fa fa-star"></i> Starred</button>
         <button id="sent"><i class="fa fa-paper-plane"></i> Sent</button>
@@ -180,20 +180,20 @@
         <div id="messageList"></div>
         <div id="messageDetails"></div>
         
-		<div id="composeMessage">
-		    <span class="close-icon" onclick="closeCompose()">×</span> 
-		    <h2>Compose Message</h2>
-		    <form id="messageForm">
-			    <input type="text" id="to" name="to" placeholder="To" required><br><br>
-			    <input type="text" id="cc" name="cc" placeholder="CC"><br><br>
-			    <input type="text" id="subject" name="subject" placeholder="Subject" required><br><br>
-			    <textarea id="description" placeholder="Message Description" name="description" rows="6" required></textarea><br><br>
-			    <button type="submit" value="newMessage" >Send</button>
-			    <button type="submit" value="draftMessage" >Save as Draft</button>
-			</form>
-		    <p id="composeError"></p>
-		</div>
-
+        <div id="composeMessage">
+            <span class="close-icon" onclick="closeCompose()">×</span> 
+            <h2 id="composeHeading">Compose Message</h2>
+            <form id="messageForm">
+                <input type="hidden" id="id" name="id"><br><br>
+                <input type="text" id="to" name="to" placeholder="To" required><br><br>
+                <input type="text" id="cc" name="cc" placeholder="CC"><br><br>
+                <input type="text" id="subject" name="subject" placeholder="Subject" required><br><br>
+                <textarea id="description" placeholder="Message Description" name="description" rows="6" required></textarea><br><br>
+                <button type="button" id="sendMessage" value="sendMessage">Send</button>
+                <button type="button" id="saveDraft" value="draftMessage">Save as Draft</button>
+            </form>
+            <p id="composeError"></p>
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -208,7 +208,7 @@
         function showMessageDetails(messageId) {
             var option = $(".vertical-nav button.active").attr("id");
             $.ajax({
-                url: "<%= request.getContextPath() %>/" + option + "/messageDetails?id=" + messageId,
+                url: option + "/messageDetails?id=" + messageId,
                 type: "GET",
                 dataType: "json",
                 success: function(response) {
@@ -246,60 +246,42 @@
             $("#composeMessage").hide();
         }
 
-        function showCompose() {
+        function showCompose(headingText = "Compose Message") {
+            $("#composeHeading").text(headingText);
             $("#composeMessage").show();
         }
 
-        $(document).ready(function() {
-        	$('#messageForm').submit(function(event) {
-                event.preventDefault(); 
-                                
-                var action = $(this).find('button[type=submit]:focus').val();
-
-	            $.ajax({
-	                url: "<%= request.getContextPath() %>/" + action,
-	                method: 'POST',
-	                contentType: 'application/json',
-	                dataType: "json",
-	                data: $(this).serialize(),
-	                success: function(response) {
-	                    if(response.response_status.status === "success") {
-	                        alert('Message sent successfully!');
-	                        closeCompose();
-	                    } else {
-	                        $('#composeError').text(response.response_status.message);
-	                    }
-	                },
-	                error: function(xhr, status, error) {
-	                    $('#composeError').text('An error occurred: ' + error);
-	                }
-	            });
-            });
-        });
-
-        function saveDraft() {
-            alert("Draft saved!");
-            closeCompose();
+        function populateComposeForm(message) {
+            $('#id').val(message.id);
+            $('#to').val(message.to);
+            $('#cc').val(message.cc);
+            $('#subject').val(message.subject);
+            $('#description').val(message.description);
+            showCompose("Edit Message");
         }
 
         $(document).ready(function() {
             function displayMessages(option) {
                 $.ajax({
-                    url: "<%= request.getContextPath() %>/" + option,
+                    url: option,
                     type: "GET",
                     dataType: "json",
                     success: function(response) {
-                    	if(response.response_status.status_code==401 || option=="signout"){
-                    		window.location.href="/Smail/signup.jsp";
-                    		return;
-                    	}
+                        if (response.response_status.status_code == 401 || option === "signout") {
+                            window.location.href = "/Smail/signin.jsp";
+                            return;
+                        }
                         if (response.response_status.status === "success") {
                             var messages = response.data;
                             if (messages && messages.length > 0) {
                                 var html = "<ul class='message-list'>";
                                 $.each(messages, function(index, message) {
                                     html += "<li class='message-list-item'>";
-                                    html += "<a href='#' onclick='showMessageDetails(\"" + message.id + "\")'>";
+                                    if (option === 'draft') {
+                                        html += "<a href='#' onclick='populateComposeForm(" + JSON.stringify(message) + ")'>";
+                                    } else {
+                                        html += "<a href='#' onclick='showMessageDetails(\"" + message.id + "\")'>";
+                                    }
                                     html += "<h3 class='message-subject'>" + message.subject + "</h3>";
                                     html += "<p class='message-attachment'>" + (message.has_attachment ? "Attachment: Yes" : "Attachment: No") + "</p>";
                                     html += "<em class='message-created-time'>" + message.created_time + "</em>";
@@ -329,7 +311,7 @@
                 var option = $(this).attr("id");
                 $(".vertical-nav button").removeClass("active");
                 $(this).addClass("active");
-                if(option!="compose"){
+                if (option !== "compose") {
                     displayMessages(option);
                     showMessageList();
                 }
@@ -339,6 +321,54 @@
                 e.preventDefault();
                 showCompose();
             });
+
+            $('#sendMessage').click(function(e) {
+                e.preventDefault();
+                submitForm('sendMessage');
+            });
+
+            $('#saveDraft').click(function(e) {
+                e.preventDefault();
+                submitForm('saveDraft');
+            });
+
+            function submitForm(action) {
+                var formData = {
+                	id: $('#id').val().trim(),	
+                    to: $('#to').val().trim(),
+                    cc: $('#cc').val().trim(),
+                    subject: $('#subject').val().trim(),
+                    description: $('#description').val().trim()
+                };
+
+                $.ajax({
+                    url: action,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    dataType: 'json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        if (response.response_status && response.response_status.status === "success") {
+                            alert('Message ' + (action === 'sendMessage' ? 'sent' : 'saved as draft') + ' successfully!');
+                            closeCompose();
+                            location.reload();
+                        } else {
+                        	console.log("else block");
+                            $('#composeError').text(response.response_status.message || 'Unknown error');
+                        }
+                    },
+	                error: function(xhr, status, error) {
+	                    let message;
+	                    try {
+	                        const response = JSON.parse(xhr.responseText);
+	                        message = response.response_status.message || "An unknown error occurred.";
+	                    } catch (e) {
+	                        message = "An error occurred. Please try again.";
+	                    }
+	                    $('#composeError').html('<p style="color: red;">' + message + '</p>');
+	                }
+                });
+            }
         });
     </script>
 </body>

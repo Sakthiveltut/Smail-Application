@@ -3,7 +3,10 @@ package com.smail;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -42,47 +45,52 @@ public class Smail extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response){
         String action = request.getServletPath();
+        System.out.println(action);
         
         HttpSession session = request.getSession(false);
         if (session != null && session.getAttribute("user") != null) {
-        
-	        if (("/" + Folder.getInboxName()).equals(action)) {
-	            displayMessages(request, response, Folder.getInboxName());
-	        } else if (("/" + Folder.getSentName()).equals(action)) {
-	            displayMessages(request, response, Folder.getSentName());
-	        } else if (("/" + Folder.getDraftName()).equals(action)) {
-	            displayMessages(request, response, Folder.getDraftName());
-	        } else if (("/" + Folder.getSpamName()).equals(action)) {
-	            displayMessages(request, response, Folder.getSpamName());
-	        } else if (("/" + Folder.getBinName()).equals(action)) {
-	            displayMessages(request, response, Folder.getBinName());
-	        } else if (("/" + Folder.getStarredName()).equals(action)) {
-	            displayMessages(request, response, Folder.getStarredName());
-	            
-	        } else if ((("/" + Folder.getInboxName()) + "/messageDetails").equals(action)) {
-	            displayMessageDetails(request, response, Folder.getInboxName());
-	        } else if ((("/" + Folder.getSentName()) + "/messageDetails").equals(action)) {
-	            displayMessageDetails(request, response, Folder.getSentName());
-	        } else if ((("/" + Folder.getDraftName()) + "/messageDetails").equals(action)) {
-	            displayMessageDetails(request, response, Folder.getDraftName());
-	        } else if ((("/" + Folder.getSpamName()) + "/messageDetails").equals(action)) {
-	            displayMessageDetails(request, response, Folder.getSpamName());
-	        } else if ((("/" + Folder.getBinName()) + "/messageDetails").equals(action)) {
-	            displayMessageDetails(request, response, Folder.getBinName());
-	        } else if ((("/" + Folder.getStarredName()) + "/messageDetails").equals(action)) {
-	            displayMessageDetails(request, response, Folder.getStarredName());
-	            
+        	        	
+        	String url[] = action.split("/");
+        	byte size = (byte) url.length;
+        	if(size==2 && Folder.getFolders().containsKey(url[1])) {
+        		System.out.println("if block "+url[1]);
+        		displayMessages(request, response, url[1]);
+        		
+	        } else if (size==3 && "messageDetails".equals(url[size-1])) {
+	        	if(Folder.getFolders().containsKey(url[1])) {
+		            displayMessageDetails(request, response, url[1]);
+	        	}
+	        } else if (size==3 && "star".equals(url[size-1])) {
+ 	        	if(Folder.getFolders().containsKey(url[1])) {
+ 		            starMessage(request, response, url[1]);
+ 	        	} 
 	        } else if ("/signout".equals(action)) {
 	            signOut(request, response);
+	        }else {
+	        	System.out.println("url not found");
 	        }
      
         } else {
         	sendResponse(response, HttpServletResponse.SC_UNAUTHORIZED,STATUS_FAILED, "User session expired. Please sign in again.",null);
         }
     }
+    
+	@Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) {
+        String action = request.getServletPath();
+
+        if ("/signup".equals(action)) {
+            signUp(request, response);
+        } else if ("/signin".equals(action)) {
+            signIn(request, response);
+        } else if ("/sendMessage".equals(action)) {
+        	sendMessage(request, response,"sendMessage");
+        } else if ("/saveDraft".equals(action)) {
+        	saveDraftMessage(request, response);        	
+        } 
+    }
 
     private void sendMessage(HttpServletRequest request, HttpServletResponse response, String messageType) {
-    	System.out.println("sendMessage");
 		StringBuilder sb = new StringBuilder();
 		BufferedReader reader;
 		try {
@@ -107,25 +115,32 @@ public class Smail extends HttpServlet {
 			jsonObject = (JSONObject) parser.parse(sb.toString());
 		} catch (ParseException e) {
 			e.printStackTrace();
-		}
-    	
+		}    
+	    
+	    Long messageId = null;
+	    if (jsonObject.get("id") != null && !jsonObject.get("id").toString().isEmpty()) {
+	        try {
+	            messageId = Long.parseLong(jsonObject.get("id").toString());
+	        } catch (NumberFormatException e) {
+	            sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, "Invalid message ID format", null);
+	            return;
+	        }
+	    }
+	    
+	    System.out.println(messageId);
     	String to = (String)jsonObject.get("to");
     	String cc = (String)jsonObject.get("cc");
     	String subject = (String)jsonObject.get("subject");
     	String description = (String)jsonObject.get("description");
-    	System.out.println(messageType+"  "+to);
     	messageOperation.inputMessageDetails(to,cc,subject,description);
 		try {
 			JSONObject message = null;
-			if("newMessage".equals(messageType)) {
+			if(messageId==null) {
 				 message = messageOperation.createMessage();
-			}else if("draftMessage".equals(messageType)) {
-		    	String messageId = request.getParameter("id");
-		    	if(messageId!=null) {
-					message = messageOperation.getMessage(Folder.getDraftName(),Long.parseLong(messageId));
-		    	}
-			}
-			messageOperation.sendMessage(messageType, message);
+			}else {
+				message = messageOperation.getMessage(Folder.getDraftName(),messageId);
+			}			
+			messageOperation.sendMessage(messageId==null?"newMessage":"draftMessage", message);
             sendResponse(response, HttpServletResponse.SC_OK,STATUS_SUCCESS, null, message);
 		} catch (InvalidInputException | InvalidEmailException e) {
 			sendResponse(response, HttpServletResponse.SC_BAD_REQUEST,STATUS_FAILED, e.getMessage(),null);
@@ -134,18 +149,75 @@ public class Smail extends HttpServlet {
         	sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED, e.getMessage(),null);
 		}	
     }
-
-	@Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) {
-        String action = request.getServletPath();
-
-        if ("/signup".equals(action)) {
-            signUp(request, response);
-        } else if ("/signin".equals(action)) {
-            signIn(request, response);
-        } else if ("/newMessage".equals(action)) {
-        	sendMessage(request, response,"newMessage");
+    
+    private void saveDraftMessage(HttpServletRequest request, HttpServletResponse response) {
+		StringBuilder sb = new StringBuilder();
+		BufferedReader reader;
+		try {
+			reader = request.getReader();
+			String line;
+			while ((line = reader.readLine()) != null) {
+				sb.append(line);
+			}
+		} catch (IOException e) {
+			sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED,e.getMessage(),null);
+			return;
+		}
+    	
+        if (sb.toString().isEmpty()) {
+            sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, "Empty request body", null);
+            return;
         }
+
+		JSONParser parser = new JSONParser();
+		JSONObject jsonObject = null;
+		try {
+			jsonObject = (JSONObject) parser.parse(sb.toString());
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}    
+	    
+	    Long messageId = null;
+	    if (jsonObject.get("id") != null && !jsonObject.get("id").toString().isEmpty()) {
+	        try {
+	            messageId = Long.parseLong(jsonObject.get("id").toString());
+	        } catch (NumberFormatException e) {
+	            sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, "Invalid message ID format", null);
+	            return;
+	        }
+	    }
+
+	    String to = (String)jsonObject.get("to");
+    	String cc = (String)jsonObject.get("cc");
+    	String subject = (String)jsonObject.get("subject");
+    	String description = (String)jsonObject.get("description");
+    	messageOperation.inputMessageDetails(to,cc,subject,description);
+		try {
+			JSONObject message = null;
+			if(messageId==null) {
+				 message = messageOperation.createMessage();
+				 messageOperation.setMessageFolder(UserDatabase.getCurrentUser().getUserId(),(long)message.get("id"),Folder.getFolderId(Folder.getDraftName()));
+			}else {
+				message = messageOperation.getMessage(Folder.getDraftName(),messageId);
+				messageOperation.updateDraftMessage(message);
+			}
+            sendResponse(response, HttpServletResponse.SC_OK,STATUS_SUCCESS, null, message);
+		} catch (InvalidInputException | InvalidEmailException e) {
+			sendResponse(response, HttpServletResponse.SC_BAD_REQUEST,STATUS_FAILED, e.getMessage(),null);
+		} catch (Exception e) {
+			e.printStackTrace();
+        	sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED, e.getMessage(),null);
+		}	
+    }
+    
+    private void starMessage(HttpServletRequest request, HttpServletResponse response,String folderName) {
+    	long messageId = Long.parseLong(request.getParameter("id"));
+    	try {
+			messageOperation.starredMessage(messageId,Folder.getFolderId(folderName));
+		} catch (Exception e) {
+			e.printStackTrace();
+        	sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED, e.getMessage(),null);
+		}
     }
 
     private void displayMessageDetails(HttpServletRequest request, HttpServletResponse response, String folderName) {
@@ -204,8 +276,8 @@ public class Smail extends HttpServlet {
     }
 
     private void displayMessages(HttpServletRequest request, HttpServletResponse response, String folderName) {
+    	System.out.println("displayMessages "+folderName);
         try {
-			request.setAttribute("folderName", folderName);
             JSONArray messages = MessageOperation.getMessages(folderName);
             sendResponse(response, HttpServletResponse.SC_OK,STATUS_SUCCESS,null, messages);
         } catch (Exception e) {
@@ -221,8 +293,6 @@ public class Smail extends HttpServlet {
 
     @SuppressWarnings("unchecked")
 	private void sendResponse(HttpServletResponse response, int statusCode,String status,String message, Object jsonData){
-        response.setContentType("application/json");
-        response.setStatus(statusCode);
         
         JSONObject response_status = new JSONObject();
         response_status.put("status_code", statusCode);
@@ -242,160 +312,3 @@ public class Smail extends HttpServlet {
 		}
     }
 }
-
-
-/*
-@WebServlet("/")
-public class Smail extends HttpServlet {
-	
-	//private static final long serialVersionUID = 1L;
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response){
-		String action = request.getServletPath();
-		
-				
-		if(("/"+Folder.getInboxName()).equals(action)) {
-			displayMessages(request,response,Folder.getInboxName());
-		}else if(("/"+Folder.getSentName()).equals(action)) {
-			displayMessages(request,response,Folder.getSentName());
-		}else if(("/"+Folder.getDraftName()).equals(action)) {
-			displayMessages(request,response,Folder.getDraftName());
-		}else if(("/"+Folder.getSpamName()).equals(action)) {
-			displayMessages(request,response,Folder.getSpamName());
-		}else if(("/"+Folder.getBinName()).equals(action)) {
-			displayMessages(request,response,Folder.getBinName());
-		}else if(("/"+Folder.getStarredName()).equals(action)) {
-			displayMessages(request,response,Folder.getStarredName());
-			
-		}else if((("/"+Folder.getInboxName())+"/messageDetails").equals(action)) {
-			displayMessageDetails(request,response,Folder.getInboxName());
-		}else if((("/"+Folder.getSentName())+"/messageDetails").equals(action)) {
-			displayMessageDetails(request,response,Folder.getSentName());
-		}else if((("/"+Folder.getDraftName())+"/messageDetails").equals(action)) {
-			displayMessageDetails(request,response,Folder.getDraftName());
-		}else if((("/"+Folder.getSpamName())+"/messageDetails").equals(action)) {
-			displayMessageDetails(request,response,Folder.getSpamName());
-		}else if((("/"+Folder.getBinName())+"/messageDetails").equals(action)) {
-			displayMessageDetails(request,response,Folder.getBinName());
-		}else if((("/"+Folder.getStarredName())+"/messageDetails").equals(action)) {
-			displayMessageDetails(request,response,Folder.getStarredName());
-			
-		}else if("/signout".equals(action)) {
-			signOut(request,response);
-		}
-	}
-	
-	@Override
-	protected void service(HttpServletRequest request, HttpServletResponse response) {
-		doPost(request,response);
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) {
-		String action = request.getServletPath();
-		
-		if("/signup".equals(action)) {
-			signUp(request,response);
-		}else if("/signin".equals(action)){
-			signIn(request,response);
-		}
-	}
-	
-	private void displayMessageDetails(HttpServletRequest request, HttpServletResponse response,String folderName) {
-		Long messageId = null;
-		try {
-			String messageIdStr = request.getParameter("id");
-			if(messageIdStr!=null) {
-				messageId = Long.parseLong(messageIdStr);
-			}
-			Message message = MessageOperation.getMessage(folderName,messageId);
-			request.setAttribute("message", message);
-			request.getRequestDispatcher("/messageDetails.jsp").forward(request, response);
-		}catch(NumberFormatException e) {
-			request.setAttribute("error","Please check the URL and try again."+ e.getMessage());
-		}catch(Exception e) {
-			request.setAttribute("error","An unexpected error occurred. Please try again later. Error details: "+ e.getMessage());
-		}
-	}
-
-	private void signUp(HttpServletRequest request, HttpServletResponse response){
-		String name = request.getParameter("name");
-		String smail = request.getParameter("smail");
-		String password = request.getParameter("password");
-		String confirmPassword = request.getParameter("confirmPassword");
-				
-		if(password.equals(confirmPassword)) {
-			try {
-				if(Authentication.signUp(name,smail,password)) {
-					try {
-						request.getRequestDispatcher("signin.jsp").forward(request, response);
-					} catch (IOException e) {
-						request.setAttribute("error","An unexpected error occurred. Please try again later. Error details: "+ e.getMessage());
-					}
-				}else {
-					request.setAttribute("error","That email id is taken.Try another.");;
-					try {
-						request.getRequestDispatcher("signup.jsp").forward(request, response);
-					} catch (Exception e) {
-						request.setAttribute("error","An unexpected error occurred. Please try again later. Error details: "+ e.getMessage());
-					}
-				}
-			} catch (Exception e) {
-				request.setAttribute("error",e.getMessage());
-			}
-		}else {
-			request.setAttribute("error","Password mismatch.");
-			try {
-				request.getRequestDispatcher("signup.jsp").forward(request, response);
-			} catch (Exception e) {
-				request.setAttribute("error","An unexpected error occurred. Please try again later. Error details: "+ e.getMessage());
-			} 
-		}
-	}
-	
-	private void signIn(HttpServletRequest request, HttpServletResponse response) {
-		String smail = request.getParameter("smail");
-		String password = request.getParameter("password");
-		try {
-			User user = Authentication.signIn(smail,password);
-			HttpSession session = request.getSession();
-			session.setAttribute("user", user);
-			request.getRequestDispatcher("home.jsp").forward(request, response);
-		}catch (AuthenticationFailedException e) {
-			request.setAttribute("error",e.getMessage());
-			try {
-				response.sendRedirect("signin.jsp");
-			} catch (Exception e1) {
-				request.setAttribute("error","An unexpected error occurred. Please try again later. Error details: "+ e1.getMessage());
-			}
-		}  catch (Exception e) {
-			request.setAttribute("error","An unexpected error occurred. Please try again later. Error details: "+ e.getMessage());
-		}
-	}
-	
-	private void displayMessages(HttpServletRequest request, HttpServletResponse response, String folderName) {
-		HttpSession session = request.getSession(false);
-		try {
-			if(session!=null && session.getAttribute("user")!=null) {
-				request.setAttribute("folderName", folderName);
-				List<Message> messages = MessageOperation.getMessages(folderName);
-				request.setAttribute("messages", messages);
-				
-				request.getRequestDispatcher("home.jsp").forward(request, response);
-			}else {
-				response.sendRedirect("signin.jsp");
-			}
-		} catch (Exception e) {
-				request.setAttribute("error","An unexpected error occurred. Please try again later. Error details: "+ e.getMessage());
-				e.printStackTrace();
-		}
-	}
-	
-	private void signOut(HttpServletRequest request, HttpServletResponse response) {
-		HttpSession session = request.getSession();
-		session.invalidate();
-	}
-	
-	
-}*/

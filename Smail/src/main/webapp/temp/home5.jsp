@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inbox</title>
-	<style>
+    <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -114,11 +114,69 @@
         .hidden {
             display: none;
         }
+        #composeMessage {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-width: 80%;
+            width: 700px;
+            box-sizing: border-box;
+            display:none;
+        }
+        #composeMessage input[type="text"], #composeMessage textarea {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        #composeMessage button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        #composeMessage button:hover {
+            background-color: #0056b3;
+        }
+        .close-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 30px;
+            color: #666;
+        }
+        .close-icon:hover {
+            color: #333;
+        }
+        .star-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #ccc;
+            font-size: 16px;
+        }
+        .star-button:hover {
+            color: gold;
+        }
+        .starred {
+            color: gold;
+        }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-        <button id="compose"><i class="fa fa-pencil-alt"></i> Compose</button>
     <div class="vertical-nav">
+        <button id="compose"><i class="fa fa-pencil-alt"></i> Compose</button>
         <button id="inbox" class="active"><i class="fa fa-inbox"></i> Inbox</button>
         <button id="starred"><i class="fa fa-star"></i> Starred</button>
         <button id="sent"><i class="fa fa-paper-plane"></i> Sent</button>
@@ -134,11 +192,26 @@
         <div id="backButton"><button onclick="showMessageList()">Back to Messages</button></div>
         <div id="messageList"></div>
         <div id="messageDetails"></div>
+        
+        <div id="composeMessage">
+            <span class="close-icon" onclick="closeCompose()">×</span> 
+            <h2 id="composeHeading">Compose Message</h2>
+            <form id="messageForm">
+                <input type="hidden" id="id" name="id"><br><br>
+                <input type="text" id="to" name="to" placeholder="To" required><br><br>
+                <input type="text" id="cc" name="cc" placeholder="CC"><br><br>
+                <input type="text" id="subject" name="subject" placeholder="Subject" required><br><br>
+                <textarea id="description" placeholder="Message Description" name="description" rows="6" required></textarea><br><br>
+                <button type="button" id="sendMessage" value="sendMessage">Send</button>
+                <button type="button" id="saveDraft" value="draftMessage">Save as Draft</button>
+            </form>
+            <p id="composeError"></p>
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        function showMessageList() {	
+        function showMessageList() {
             $("#messageDetails").hide();
             $("#messageList").show();
             $("#backButton").hide();
@@ -146,11 +219,11 @@
         }
 
         function showMessageDetails(messageId) {
-            var folderName = $(".vertical-nav button.active").attr("id");
+            var option = $(".vertical-nav button.active").attr("id");
             $.ajax({
-                url: "<%= request.getContextPath() %>/" + folderName + "/messageDetails?id=" + messageId,
+                url: option + "/messageDetails?id=" + messageId,
                 type: "GET",
-                dataType: "json", 
+                dataType: "json",
                 success: function(response) {
                     if (response.response_status.status === "success") {
                         var message = response.data;
@@ -160,9 +233,8 @@
                         html += "<p><strong>From:</strong> " + message.from + "</p>";
                         html += "<p><strong>To:</strong> " + message.to + "</p>";
                         html += "<p><strong>Created:</strong> " + message.created_time + "</p>";
-                        html += "<p><strong>Attachment:</strong> " + (message.has_attachment ? "Yes" : "No") + "</p>";
-                        html += "<p><strong>Read:</strong> " + (message.is_read ? "Yes" : "No") + "</p>";
-                        html += "<p><strong>Starred:</strong> " + (message.is_starred ? "Yes" : "No") + "</p>";
+                        html += "<p><strong>Starred:</strong> " + message.is_starred + "</p>";
+                        html += "<p><strong>Unread:</strong> " + message.is_read + "</p>";
                         html += "</div>";
                         html += "<div>";
                         html += "<p><strong>Description:</strong><br>" + message.description + "</p>";
@@ -185,24 +257,67 @@
             });
         }
 
+        function closeCompose() {
+            $("#composeMessage").hide();
+        }
+
+        function showCompose(headingText = "Compose Message") {
+            $("#composeHeading").text(headingText);
+            $("#composeMessage").show();
+        }
+
+        function populateComposeForm(message) {
+            $('#id').val(message.id);
+            $('#to').val(message.to);
+            $('#cc').val(message.cc);
+            $('#subject').val(message.subject);
+            $('#description').val(message.description);
+            showCompose("Edit Message");
+        }
+        
+        function starMessage(path, buttonElement) {
+            $.ajax({
+                url: path,
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.response_status.status === 'success') {
+                        $(buttonElement).toggleClass('starred');
+                    } else {
+                        console.error('Failed to star message.');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error starring message:', error);
+                }
+            });
+        }
+
         $(document).ready(function() {
-            function displayMessages(folderName) {
+            function displayMessages(option) {
                 $.ajax({
-                    url: "<%= request.getContextPath() %>/" + folderName,
+                    url: option,
                     type: "GET",
                     dataType: "json",
                     success: function(response) {
-                    	if(response.response_status.status_code==401){
-                    		window.location.href="/Smail/signup.jsp";
-                    		return;
-                    	}
+                        if (response.response_status.status_code == 401 || option === "signout") {
+                            window.location.href = "/Smail/signin.jsp";
+                            return;
+                        }
                         if (response.response_status.status === "success") {
                             var messages = response.data;
                             if (messages && messages.length > 0) {
                                 var html = "<ul class='message-list'>";
                                 $.each(messages, function(index, message) {
                                     html += "<li class='message-list-item'>";
-                                    html += "<a href='#' onclick='showMessageDetails(\"" + message.id + "\")'>";
+                                    html += "<button class='star-button " + (message.is_starred ? "starred" : "") + "' onclick='starMessage(\"" + option + "/star?id=" + message.id + "\", this)'>";
+                                    html += "<i class='fa fa-star'></i>";
+                                    html += "</button>";
+                                    if (option === 'draft') {
+                                        html += "<a href='#' onclick='populateComposeForm(" + JSON.stringify(message) + ")'>";
+                                    } else {
+                                        html += "<a href='#' onclick='showMessageDetails(\"" + message.id + "\")'>";
+                                    }
                                     html += "<h3 class='message-subject'>" + message.subject + "</h3>";
                                     html += "<p class='message-attachment'>" + (message.has_attachment ? "Attachment: Yes" : "Attachment: No") + "</p>";
                                     html += "<em class='message-created-time'>" + message.created_time + "</em>";
@@ -229,12 +344,67 @@
 
             $(".vertical-nav button").click(function(e) {
                 e.preventDefault();
-                var folderName = $(this).attr("id");
+                var option = $(this).attr("id");
                 $(".vertical-nav button").removeClass("active");
                 $(this).addClass("active");
-                displayMessages(folderName);
-                showMessageList(); 
+                if (option !== "compose") {
+                    displayMessages(option);
+                    showMessageList();
+                }
             });
+
+            $("#compose").click(function(e) {
+                e.preventDefault();
+                showCompose();
+            });
+
+            $('#sendMessage').click(function(e) {
+                e.preventDefault();
+                submitForm('sendMessage');
+            });
+
+            $('#saveDraft').click(function(e) {
+                e.preventDefault();
+                submitForm('saveDraft');
+            });
+
+            function submitForm(action) {
+                var formData = {
+                	id: $('#id').val().trim(),	
+                    to: $('#to').val().trim(),
+                    cc: $('#cc').val().trim(),
+                    subject: $('#subject').val().trim(),
+                    description: $('#description').val().trim()
+                };
+
+                $.ajax({
+                    url: action,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    dataType: 'json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        if (response.response_status && response.response_status.status === "success") {
+                            alert('Message ' + (action === 'sendMessage' ? 'sent' : 'saved as draft') + ' successfully!');
+                            closeCompose();
+                            location.reload();
+                        } else {
+                        	console.log("else block");
+                            $('#composeError').text(response.response_status.message || 'Unknown error');
+                        }
+                    },
+	                error: function(xhr, status, error) {
+	                    let message;
+	                    try {
+	                        const response = JSON.parse(xhr.responseText);
+	                        message = response.response_status.message || "An unknown error occurred.";
+	                    } catch (e) {
+	                        message = "An error occurred. Please try again.";
+	                    }
+	                    $('#composeError').html('<p style="color: red;">' + message + '</p>');
+	                }
+                });
+            }
         });
     </script>
 </body>

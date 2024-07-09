@@ -10,45 +10,56 @@
             margin: 0;
             padding: 0;
             display: flex;
+            background-color: #f9f9f9;
         }
         .vertical-nav {
-            background-color: #f0f0f0;
-            width: 200px;
+            background-color: #343a40;
+            width: 250px;
             height: 100vh;
             position: fixed;
-            padding-top: 10px;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            padding-top: 20px;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+            transition: width 0.3s;
         }
         .vertical-nav button {
-            display: block;
+            display: flex;
+            align-items: center;
             width: 100%;
-            padding: 12px 16px;
+            padding: 12px 20px;
             background: none;
             border: none;
             text-align: left;
-            color: #333;
+            color: #fff;
             cursor: pointer;
+            font-size: 16px;
             transition: background-color 0.3s;
+        }
+        .vertical-nav button .fa {
+            margin-right: 15px;
         }
         .vertical-nav button:hover, .vertical-nav button.active {
             background-color: #4CAF50;
-            color: white;
         }
         .content {
-            margin-left: 220px;
+            margin-left: 250px;
             padding: 20px;
-            width: calc(100% - 220px);
+            width: calc(100% - 250px);
+            transition: margin-left 0.3s, width 0.3s;
         }
         .message-list {
             list-style-type: none;
             padding: 0;
             margin: 0;
+            border-top: 1px solid #ddd;
         }
         .message-list-item {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             border-bottom: 1px solid #ddd;
-            padding: 10px;
+            padding: 15px;
+            background-color: #fff;
+            transition: background-color 0.3s;
         }
         .message-list-item a {
             text-decoration: none;
@@ -57,11 +68,14 @@
             align-items: center;
             width: 100%;
         }
+        .message-list-item:hover {
+            background-color: #f1f1f1;
+        }
         .message-subject {
             flex: 3;
             margin: 0;
-            font-size: 1em;
-            color: #4CAF50;
+            font-size: 1.1em;
+            color: #333;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -69,6 +83,8 @@
         .message-attachment {
             flex: 1;
             text-align: center;
+            font-size: 0.9em;
+            color: #888;
         }
         .message-created-time {
             flex: 1;
@@ -80,7 +96,8 @@
             margin-top: 20px;
             padding: 20px;
             border: 1px solid #ddd;
-            background-color: #f9f9f9;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             display: none; 
         }
         #messageDetailsContent {
@@ -92,22 +109,83 @@
             flex: 1;
         }
         #backButton {
-            display: none; 
+            display: none;
             margin-bottom: 20px;
         }
+        .hidden {
+            display: none;
+        }
+        #composeMessage {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-width: 80%;
+            width: 700px;
+            box-sizing: border-box;
+            display: none;
+        }
+        #composeMessage input[type="text"], #composeMessage textarea {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        #composeMessage button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        #composeMessage button:hover {
+            background-color: #0056b3;
+        }
+        .close-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 30px;
+            color: #666;
+        }
+        .close-icon:hover {
+            color: #333;
+        }
+        .star-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #ccc;
+            font-size: 16px;
+        }
+        .star-button:hover {
+            color: gold;
+        }
+        .starred {
+            color: gold;
+        }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <div class="vertical-nav">
-        <button id="inbox" class="active">Inbox</button>
-        <button id="starred">Starred</button>
-        <button id="compose">Compose</button>
-        <button id="sent">Sent</button>
-        <button id="unread">Unread</button>
-        <button id="draft">Draft</button>
-        <button id="spam">Spam</button>
-        <button id="bin">Bin</button>
-        <button id="signout">Sign Out</button>
+        <button id="compose"><i class="fa fa-pencil-alt"></i> Compose</button>
+        <button id="inbox" class="active"><i class="fa fa-inbox"></i> Inbox</button>
+        <button id="starred"><i class="fa fa-star"></i> Starred</button>
+        <button id="sent"><i class="fa fa-paper-plane"></i> Sent</button>
+        <button id="unread"><i class="fa fa-envelope-open"></i> Unread</button>
+        <button id="draft"><i class="fa fa-file-alt"></i> Draft</button>
+        <button id="spam"><i class="fa fa-exclamation-circle"></i> Spam</button>
+        <button id="bin"><i class="fa fa-trash"></i> Bin</button>
+        <button id="signout"><i class="fa fa-sign-out-alt"></i> Sign Out</button>
     </div>
 
     <div class="content">
@@ -115,6 +193,21 @@
         <div id="backButton"><button onclick="showMessageList()">Back to Messages</button></div>
         <div id="messageList"></div>
         <div id="messageDetails"></div>
+        
+        <div id="composeMessage">
+            <span class="close-icon" onclick="closeCompose()">×</span> 
+            <h2 id="composeHeading">Compose Message</h2>
+            <form id="messageForm">
+                <input type="hidden" id="id" name="id"><br><br>
+                <input type="text" id="to" name="to" placeholder="To" required><br><br>
+                <input type="text" id="cc" name="cc" placeholder="CC"><br><br>
+                <input type="text" id="subject" name="subject" placeholder="Subject" required><br><br>
+                <textarea id="description" placeholder="Message Description" name="description" rows="6" required></textarea><br><br>
+                <button type="button" id="sendMessage">Send</button>
+                <button type="button" id="saveDraft">Save as Draft</button>
+            </form>
+            <p id="composeError"></p>
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -127,11 +220,11 @@
         }
 
         function showMessageDetails(messageId) {
-            var folderName = $(".vertical-nav button.active").attr("id");
+            var option = $(".vertical-nav button.active").attr("id");
             $.ajax({
-                url: "<%= request.getContextPath() %>/" + folderName + "/messageDetails?id=" + messageId,
+                url: option + "/messageDetails?id=" + messageId,
                 type: "GET",
-                dataType: "json", 
+                dataType: "json",
                 success: function(response) {
                     if (response.response_status.status === "success") {
                         var message = response.data;
@@ -141,9 +234,6 @@
                         html += "<p><strong>From:</strong> " + message.from + "</p>";
                         html += "<p><strong>To:</strong> " + message.to + "</p>";
                         html += "<p><strong>Created:</strong> " + message.created_time + "</p>";
-                        html += "<p><strong>Attachment:</strong> " + (message.has_attachment ? "Yes" : "No") + "</p>";
-                        html += "<p><strong>Read:</strong> " + (message.is_read ? "Yes" : "No") + "</p>";
-                        html += "<p><strong>Starred:</strong> " + (message.is_starred ? "Yes" : "No") + "</p>";
                         html += "</div>";
                         html += "<div>";
                         html += "<p><strong>Description:</strong><br>" + message.description + "</p>";
@@ -166,23 +256,44 @@
             });
         }
 
+        function closeCompose() {
+            $("#composeMessage").hide();
+        }
+
+        function showCompose(headingText = "Compose Message") {
+            $("#composeHeading").text(headingText);
+            $("#composeMessage").show();
+        }
+
+        function populateComposeForm(message) {
+            $('#id').val(message.id);
+            $('#to').val(message.to);
+            $('#cc').val(message.cc);
+            $('#subject').val(message.subject);
+            $('#description').val(message.description);
+            showCompose("Edit Message");
+        }
+
         $(document).ready(function() {
-            function displayMessages(folderName) {
+            function displayMessages(option) {
                 $.ajax({
-                    url: "<%= request.getContextPath() %>/" + folderName,
+                    url: option,
                     type: "GET",
                     dataType: "json",
                     success: function(response) {
-                    	if(response.response_status.status_code==401){
-                    		window.location.href="/Smail/signup.jsp";
-                    		return;
-                    	}
+                        if (response.response_status.status_code == 401 || option === "signout") {
+                            window.location.href = "/Smail/signin.jsp";
+                            return;
+                        }
                         if (response.response_status.status === "success") {
                             var messages = response.data;
                             if (messages && messages.length > 0) {
                                 var html = "<ul class='message-list'>";
                                 $.each(messages, function(index, message) {
                                     html += "<li class='message-list-item'>";
+                                    html += "<button class='star-button' onclick='toggleStar(\"" + message.id + "\")'>";
+                                    html += "<i class='fa fa-star'></i>";
+                                    html += "</button>";
                                     html += "<a href='#' onclick='showMessageDetails(\"" + message.id + "\")'>";
                                     html += "<h3 class='message-subject'>" + message.subject + "</h3>";
                                     html += "<p class='message-attachment'>" + (message.has_attachment ? "Attachment: Yes" : "Attachment: No") + "</p>";
@@ -210,42 +321,90 @@
 
             $(".vertical-nav button").click(function(e) {
                 e.preventDefault();
-                var folderName = $(this).attr("id");
+                var option = $(this).attr("id");
                 $(".vertical-nav button").removeClass("active");
                 $(this).addClass("active");
-                displayMessages(folderName);
-                showMessageList(); 
+                if (option !== "compose") {
+                    displayMessages(option);
+                    showMessageList();
+                }
             });
+
+            $("#compose").click(function(e) {
+                e.preventDefault();
+                showCompose();
+            });
+
+            $('#sendMessage').click(function(e) {
+                e.preventDefault();
+                submitForm('sendMessage');
+            });
+
+            $('#saveDraft').click(function(e) {
+                e.preventDefault();
+                submitForm('saveDraft');
+            });
+
+            function submitForm(action) {
+                var formData = {
+                    id: $('#id').val().trim(),
+                    to: $('#to').val().trim(),
+                    cc: $('#cc').val().trim(),
+                    subject: $('#subject').val().trim(),
+                    description: $('#description').val().trim()
+                };
+
+                $.ajax({
+                    url: action,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    dataType: 'json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        if (response.response_status && response.response_status.status === "success") {
+                            alert('Message ' + (action === 'sendMessage' ? 'sent' : 'saved as draft') + ' successfully!');
+                            closeCompose();
+                            location.reload();
+                        } else {
+                            console.log("else block");
+                            $('#composeError').text(response.response_status.message || 'Unknown error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        let message;
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            message = response.response_status.message || "An unknown error occurred.";
+                        } catch (e) {
+                            message = "An error occurred. Please try again.";
+                        }
+                        $('#composeError').html('<p style="color: red;">' + message + '</p>');
+                    }
+                });
+            }
+
+            function toggleStar(messageId) {
+                $.ajax({
+                    url: 'starred?id=' + messageId,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.response_status.status === 'success') {
+                            alert('Message starred successfully!');
+                            // Example: Update star button appearance
+                            // $('.star-button[data-id="' + messageId + '"]').addClass('starred');
+                            displayMessages($(".vertical-nav button.active").attr("id"));
+                        } else {
+                            alert('Failed to star message. Please try again.');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error: ' + error);
+                        alert('An error occurred while starring the message.');
+                    }
+                });
+            }
         });
     </script>
 </body>
 </html>
-        function sendMessage(option) {
-            var to = $('#to').val();
-            var cc = $('#cc').val();
-            var subject = $('#subject').val();
-            var description = $('#description').val();
-                    	
-            $.ajax({
-                url: "<%= request.getContextPath() %>/" + option,
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({
-                    to: to,
-                    cc: cc,
-                    subject: subject,
-                    description: description,
-                }),
-                success: function(response) {
-                    if(response.response_status.status === "success") {
-                        alert('Message sent successfully!');
-                        closeCompose();
-                    } else {
-                        $('#composeError').text(response.response_status.message);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    $('#composeError').text('An error occurred: ' + error);
-                }
-            });
-        }
