@@ -52,7 +52,7 @@ public class MessageOperation {
 			    su.email AS sender_email,
 			    m.subject,
 			    m.description,
-			    m.is_read,
+			    mf.is_read,
 			 	mf.is_starred,
 			    m.created_time,
 			    m.has_attachment,
@@ -442,18 +442,19 @@ public class MessageOperation {
 	@SuppressWarnings("unchecked")
 	public static JSONArray getMessages(String folderName) throws Exception{	
 		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
-		if(!Folder.getStarredName().equals(folderName)) {
-			queryBuilder.append(" AND f.name = ? ");
-		}
-		else if(Folder.getStarredName().equals(folderName)) {
+		if(Folder.getStarredName().equals(folderName)) {
 			queryBuilder.append(" AND mf.is_starred = true ");
+		}else if("unread".equals(folderName)) {
+			queryBuilder.append(" AND mf.is_read = false ");
+		}else {
+			queryBuilder.append(" AND f.name = ? ");
 		}
 		queryBuilder.append(GROUP_BY);
 		Connection connection = DBConnection.getConnection();
 		JSONArray messages = null;
 		try(PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())){
 			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
-			if(!"starred".equals(folderName)) {
+			if(!"starred".equals(folderName) && !"unread".equals(folderName)) {
 				preparedStatement.setString(2,folderName);
 			}
 			try(ResultSet resultSet = preparedStatement.executeQuery()){
@@ -549,14 +550,23 @@ public class MessageOperation {
 	public JSONObject getMessage(String folderName,Long messageId) throws Exception{
 		
 		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
-		queryBuilder.append(" AND f.name = ? ");
+		if(Folder.getStarredName().equals(folderName)) {
+			queryBuilder.append(" AND mf.is_starred = true ");
+		}else if("unread".equals(folderName)) {
+			queryBuilder.append(" AND mf.is_read = false ");
+		}else {
+			queryBuilder.append(" AND f.name = ? ");
+		}
 		queryBuilder.append(" AND mf.message_id = ? ");
 		queryBuilder.append(GROUP_BY);
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())){
-			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
-			preparedStatement.setString(2,folderName);
-			preparedStatement.setLong(3,messageId);
+			byte index=1;
+			preparedStatement.setLong(index++,UserDatabase.getCurrentUser().getUserId());
+			if(!Folder.getStarredName().equals(folderName) && !"unread".equals(folderName)) {
+				preparedStatement.setString(index++,folderName);
+			}
+			preparedStatement.setLong(index++,messageId);
 			try(ResultSet resultSet = preparedStatement.executeQuery()){
 			
 				if(resultSet.next()){
@@ -569,6 +579,10 @@ public class MessageOperation {
 		            boolean isStarred = resultSet.getBoolean("is_starred");
 		            boolean hasAttachment = resultSet.getBoolean("has_attachment");
 		            Timestamp createdTime = resultSet.getTimestamp("created_time");
+		            
+		            if(!isRead) {
+		            	setMessageAsRead(messageId,folderName);
+		            }
 		            
 		            JSONObject message = new JSONObject();
 		            message.put("id", messageId);
@@ -593,19 +607,42 @@ public class MessageOperation {
 		return null;
 	}
 	
-	public void changeMessageFolderId(Long user_id,long message_id,byte oldFolderId,byte binFolderId) throws Exception{
+	public void setMessageAsRead(long message_id,String folderName) throws Exception{
+		String query = null;
+		if(Folder.getStarredName().equals(folderName)) {
+			query = "update MessageFolders set is_read=true where user_id = ? and message_id = ? and is_starred=true";			
+		} else if("unread".equals(folderName)) {
+			query = "update MessageFolders set is_read=true where user_id = ? and message_id = ? and is_read=false";			
+		}else {			
+			query = "update MessageFolders set is_read=true where user_id = ? and message_id = ? and folder_id=?";			
+		}
+		Connection connection  = DBConnection.getConnection();
+		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
+			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
+			preparedStatement.setLong(2,message_id);
+			if(!Folder.getStarredName().equals(folderName) && !"unread".equals(folderName)) {
+				preparedStatement.setLong(3,Folder.getFolderId(folderName));
+			}
+			preparedStatement.executeUpdate();
+		}catch(Exception e){
+			e.printStackTrace();
+			throw new Exception("An error occurred while trying to delete message. Please try again later. Error details: "+ e.getMessage());
+		}
+	}
+	
+	public void changeMessageFolderId(long message_id,byte currentFolderId,byte binFolderId) throws Exception{
 		String query = "update MessageFolders set folder_id=? where user_id = ? and message_id = ? and folder_id=?";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
 			preparedStatement.setInt(1,binFolderId);
-			preparedStatement.setLong(2,user_id);
+			preparedStatement.setLong(2,UserDatabase.getCurrentUser().getUserId());
 			preparedStatement.setLong(3,message_id);
-			preparedStatement.setInt(4,oldFolderId);
+			preparedStatement.setInt(4,currentFolderId);
 			int rowsCount = preparedStatement.executeUpdate();
 			if(rowsCount>0) {
 				System.out.println("The message has been moved to the bin folder.");
 			}else {
-				System.out.println("\033[31m"+"Message not found"+"\033[0m");
+				throw new Exception("Message not found");
 			}
 		}catch(Exception e){
 			e.printStackTrace();
@@ -624,7 +661,7 @@ public class MessageOperation {
 			if(rowsCount>0) {
 				System.out.println("Message deleted successfully.");
 			}else {
-				System.out.println("\033[31m"+"Message not found"+"\033[0m");
+				throw new Exception("Message not found");
 			}
 		}catch(Exception e){
 			e.printStackTrace();
@@ -639,6 +676,23 @@ public class MessageOperation {
 			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
 			preparedStatement.setLong(2,message_id);
 			preparedStatement.setLong(3,folderId);
+			int rowsCount = preparedStatement.executeUpdate();
+			if(rowsCount>0)
+				System.out.println("The message has been changed.");
+			else
+				throw new MessageNotFoundException("\033[31m"+"Message not found"+"\033[0m");
+		}catch(Exception e){
+			e.printStackTrace();
+			throw new Exception("An error occurred while trying to starred message. Please try again later. Error details: "+ e.getMessage());
+		}
+	}
+	
+	public void starredMessage(long message_id) throws Exception {
+		String query = "update MessageFolders set is_starred= not is_starred where user_id = ? and message_id = ? and is_starred=true";
+		Connection connection  = DBConnection.getConnection();
+		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
+			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
+			preparedStatement.setLong(2,message_id);
 			int rowsCount = preparedStatement.executeUpdate();
 			if(rowsCount>0)
 				System.out.println("The message has been changed.");

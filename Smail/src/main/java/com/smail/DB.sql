@@ -29,7 +29,6 @@ create table Messages(
 	sender_id bigint not null,
 	subject varchar(255) not null,
 	description text,
-    is_read boolean default false,
     has_attachment boolean default false,
     created_time timestamp default current_timestamp,
     foreign key (sender_id) references Users(id) ON DELETE restrict
@@ -39,6 +38,7 @@ create table MessageFolders(
     folder_id tinyint not null,
 	message_id bigint not null,
 	is_starred boolean default false,
+	is_read boolean default false,
     unique key(user_id,message_id),
 	foreign key (user_id) references Users(id) ON DELETE restrict,
 	foreign key (message_id) references Messages(id) ON DELETE restrict,

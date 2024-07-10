@@ -40,15 +40,7 @@
         .vertical-nav button:hover, .vertical-nav button.active {
             background-color: #4CAF50;
         }
-        #profile, #compose {
-		    margin-bottom: 20px; 
-		}
-		#signout {
-		    position: absolute;
-		    bottom: 30px; 
-		    left: 0;
-		}
-		.content {
+        .content {
             margin-left: 250px;
             padding: 20px;
             width: calc(100% - 250px);
@@ -180,20 +172,16 @@
             color: gold;
         }
         .message-list-item.read {
-	        background-color: #ffffff; 
-	    }
-	    .message-list-item.unread {
-	        background-color: #e0e0e0; 
-	    }
-	    #deleteMessages {
-		    display: none; 
-		}
+            background-color: #ffffff; 
+        }
+        .message-list-item.unread {
+            background-color: #e0e0e0; 
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <div class="vertical-nav">
-		<button id="profile"><i class="fa fa-user"></i> Profile</button>
         <button id="compose"><i class="fa fa-pencil-alt"></i> Compose</button>
         <button id="inbox" class="active"><i class="fa fa-inbox"></i> Inbox</button>
         <button id="starred"><i class="fa fa-star"></i> Starred</button>
@@ -206,9 +194,8 @@
     </div>
 
     <div class="content">
-    	<div class="profile"></div>
         <h1>Messages</h1>
-        <button id="deleteMessages" onclick="deleteSelectedMessages()">Delete Selected</button>
+        <button id="deleteMessages" onclick="deleteSelectedMessages()" disabled>Delete Selected</button>
         <div id="backButton"><button onclick="showMessageList()">Back to Messages</button></div>
         <div id="messageList"></div>
         <div id="messageDetails"></div>
@@ -231,44 +218,14 @@
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-	    var selectedMessages = [];
-    
+        var selectedMessages = [];
+
         function showMessageList() {
-        	$(".profile").hide();
             $("#messageDetails").hide();
             $("#messageList").show();
             $("#backButton").hide();
             $("h1").text("Messages");
         }
-        
-        $(document).ready(function() {
-            $("#profile").click(function() {
-                $.ajax({
-                    url: "/Smail/profile",  
-                    type: "GET",
-                    dataType: "json",
-                    success: function(response) {
-                        if (response.response_status.status === "success") {
-                            displayProfileDetails(response.data);
-                        } else {
-                            console.error("Failed to fetch profile details.");
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error("Error fetching profile details:", error);
-                    }
-                });
-            });
-
-            function displayProfileDetails(profileData) {
-                var html = "<h2>Profile Details</h2>";
-                html += "<p><strong>Name:</strong> " + profileData.name + "</p>";
-                html += "<p><strong>Email:</strong> " + profileData.email + "</p>";
-                html += "<p><strong>Last login date and time:</strong> " + profileData.lastLoginTime + "</p>";
-                $(".profile").html(html);
-            }
-        });
-
 
         function showMessageDetails(messageId) {
             var option = $(".vertical-nav button.active").attr("id");
@@ -287,64 +244,64 @@
                         html += "<p><strong>Created:</strong> " + message.created_time + "</p>";
                         html += "<p><strong>Starred:</strong> " + message.is_starred + "</p>";
                         html += "<p><strong>Unread:</strong> " + message.is_read + "</p>";
+                        html += "<button onclick='starMessage(" + messageId + ")' class='star-button " + (message.is_starred ? 'starred' : '') + "'>";
+                        html += "<i class='fa fa-star'></i> Star</button>";
+                        html += "<button onclick='markAsRead(" + messageId + ")'>";
+                        html += "<i class='fa fa-envelope-open'></i> Mark as Read</button>";
+                        html += "<button onclick='deleteMessage(" + messageId + ")'>";
+                        html += "<i class='fa fa-trash'></i> Delete</button>";
                         html += "</div>";
-                        html += "<div>";
-                        html += "<p><strong>Description:</strong><br>" + message.description + "</p>";
+                        html += "<div>" + message.description + "</div>";
                         html += "</div>";
-                        html += "</div>";
-                        $("#messageDetails").html(html).show();
+                        $("#messageDetails").html(html);
                         $("#messageList").hide();
+                        $("#messageDetails").show();
                         $("#backButton").show();
                         $("h1").text("Message Details");
                     } else {
-                        $("#messageDetails").html("<p>Error: " + response.response_status.message + "</p>").show();
-                        $("#backButton").show();
+                        alert("Failed to retrieve message details.");
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error("Error: " + error);
-                    $("#messageDetails").html("<p>An error occurred while fetching message details.</p>").show();
-                    $("#backButton").show();
+                    console.error("Error fetching message details:", error);
+                    alert("An error occurred while fetching message details.");
                 }
             });
         }
 
-        function closeCompose() {
-            $("#composeMessage").hide();
-        }
-
-        function showCompose(headingText = "Compose Message") {
-            $("#composeHeading").text(headingText);
-            $("#composeMessage").show();
-        }
-
-        function populateComposeForm(message) {
-            $('#id').val(message.id);
-            $('#to').val(message.to);
-            $('#cc').val(message.cc);
-            $('#subject').val(message.subject);
-            $('#description').val(message.description);
-            showCompose("Edit Message");
-        }
-        
-        function starMessage(path, buttonElement) {
+        function displayMessages(option) {
             $.ajax({
-                url: path,
-                type: 'GET',
-                dataType: 'json',
+                url: option + "/messages",
+                type: "GET",
+                dataType: "json",
                 success: function(response) {
-                    if (response.response_status.status === 'success') {
-                       	$(buttonElement).toggleClass('starred');
+                    if (response.response_status.status === "success") {
+                        var messages = response.data;
+                        var html = "<ul class='message-list'>";
+                        messages.forEach(function(message) {
+                            var readClass = message.is_read ? 'read' : 'unread';
+                            html += "<li class='message-list-item " + readClass + "'>";
+                            html += "<input type='checkbox' class='message-checkbox' data-message-id='" + message.id + "'>";
+                            html += "<a href='javascript:void(0)' onclick='showMessageDetails(" + message.id + ")'>";
+                            html += "<div class='message-subject'>" + message.subject + "</div>";
+                            html += "<div class='message-attachment'>" + (message.has_attachment ? "<i class='fa fa-paperclip'></i>" : "") + "</div>";
+                            html += "<div class='message-created-time'>" + message.created_time + "</div>";
+                            html += "</a>";
+                            html += "</li>";
+                        });
+                        html += "</ul>";
+                        $("#messageList").html(html);
                     } else {
-                        console.error('Failed to star message.');
+                        alert("Failed to retrieve messages.");
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error starring message:', error);
+                    console.error("Error fetching messages:", error);
+                    alert("An error occurred while fetching messages.");
                 }
             });
         }
-        
+
         function deleteSelectedMessages() {
             if (selectedMessages.length === 0) {
                 alert("Select messages to delete.");
@@ -354,7 +311,7 @@
             var option = $(".vertical-nav button.active").attr("id");
             $.ajax({
                 url: option + "/deleteMessages",
-                type: "DELETE",
+                type: "POST",
                 contentType: 'application/json',
                 dataType: 'json',
                 data: JSON.stringify({ ids: selectedMessages }),
@@ -363,7 +320,7 @@
                         alert("Messages deleted successfully!");
                         displayMessages(option);
                         selectedMessages = [];
-                        $('#deleteMessages').hide();
+                        $("#deleteMessages").prop('disabled', true);
                     } else {
                         alert("Failed to delete messages.");
                     }
@@ -374,63 +331,32 @@
                 }
             });
         }
-        
-        function toggleDeleteButton() {
-            if (selectedMessages.length > 0) {
-                $('#deleteMessages').show();
-            } else {
-                $('#deleteMessages').hide();
-            }
-        }
 
-            function displayMessages(option) {
-                $.ajax({
-                    url: option,
-                    type: "GET",
-                    dataType: "json",
-                    success: function(response) {
-                        if (response.response_status.status_code == 401 || option === "signout") {
-                            window.location.href = "/Smail/signin.jsp";
-                            return;
-                        }
-                        if (response.response_status.status === "success") {
-                            var messages = response.data;
-                            if (messages && messages.length > 0) {
-                                var html = "<ul class='message-list'>";
-                                $.each(messages, function(index, message) {
-                                	var readClass = message.is_read ? 'read' : 'unread';
-                                    html += "<li class='message-list-item " + readClass + "'>";
-                                    html += "<input type='checkbox' class='message-checkbox' data-message-id='" + message.id + "'>";
-                                    html += "<button id='star' class='star-button " + (message.is_starred ? "starred" : "") + "' onclick='starMessage(\"" + option + "/star?id=" + message.id + "\", this)'>";
-                                    html += "<i class='fa fa-star'></i>";
-                                    html += "</button>";
-                                    if (option === 'draft') {
-                                        html += "<a href='#' onclick='populateComposeForm(" + JSON.stringify(message) + ")'>";
-                                    } else {
-                                        html += "<a href='#' onclick='showMessageDetails(\"" + message.id + "\")'>";
-                                    }
-                                    html += "<h3 class='message-subject'>" + message.subject + "</h3>";
-                                    html += "<p class='message-attachment'>" + (message.has_attachment ? "Attachment: Yes" : "Attachment: No") + "</p>";
-                                    html += "<em class='message-created-time'>" + message.created_time + "</em>";
-                                    html += "</a>";
-                                    html += "</li>";
-                                });
-                                html += "</ul>";
-                                $("#messageList").html(html);
-                            } else {
-                                $("#messageList").html("<p>No messages found.</p>");
-                            }
-                        } else {
-                            $("#messageList").html("<p>Error: " + response.response_status.message + "</p>");
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error("Error: " + error);
-                        $("#messageList").html("<p>An error occurred while fetching messages.</p>");
-                    }
-                });
-            }
-            
+        $(document).ready(function() {
+            displayMessages("inbox");
+
+            $(".vertical-nav button").click(function() {
+                $(".vertical-nav button").removeClass("active");
+                $(this).addClass("active");
+                displayMessages($(this).attr("id"));
+            });
+
+            $("#compose").click(function() {
+                $("#composeMessage").show();
+            });
+
+            $("#sendMessage").click(function() {
+                // Handle send message functionality
+            });
+
+            $("#saveDraft").click(function() {
+                // Handle save draft functionality
+            });
+
+            $("#signout").click(function() {
+                // Handle signout functionality
+            });
+
             $(document).on('change', '.message-checkbox', function() {
                 var messageId = $(this).data('message-id');
                 if ($(this).is(':checked')) {
@@ -441,74 +367,33 @@
                         selectedMessages.splice(index, 1);
                     }
                 }
-                toggleDeleteButton(); 
+                toggleDeleteButton();
             });
+        });
 
-            displayMessages("inbox");
-
-            $(".vertical-nav button").click(function(e) {
-                e.preventDefault();
-                var option = $(this).attr("id");
-                $(".vertical-nav button").removeClass("active");
-                $(this).addClass("active");
-                if (option !== "compose" && option !== "profile") {
-                    displayMessages(option);
-                    showMessageList();
-                }
-            });
-
-            $("#compose").click(function(e) {
-                e.preventDefault();
-                showCompose();
-            });
-
-            $('#sendMessage').click(function(e) {
-                e.preventDefault();
-                submitForm('sendMessage');
-            });
-
-            $('#saveDraft').click(function(e) {
-                e.preventDefault();
-                submitForm('saveDraft');
-            });
-
-            function submitForm(action) {
-                var formData = {
-                	id: $('#id').val().trim(),	
-                    to: $('#to').val().trim(),
-                    cc: $('#cc').val().trim(),
-                    subject: $('#subject').val().trim(),
-                    description: $('#description').val().trim()
-                };
-
-                $.ajax({
-                    url: action,
-                    method: 'POST',
-                    contentType: 'application/json',
-                    dataType: 'json',
-                    data: JSON.stringify(formData),
-                    success: function(response) {
-                        if (response.response_status && response.response_status.status === "success") {
-                            alert('Message ' + (action === 'sendMessage' ? 'sent' : 'saved as draft') + ' successfully!');
-                            closeCompose();
-                            location.reload();
-                        } else {
-                        	console.log("else block");
-                            $('#composeError').text(response.response_status.message || 'Unknown error');
-                        }
-                    },
-	                error: function(xhr, status, error) {
-	                    let message;
-	                    try {
-	                        const response = JSON.parse(xhr.responseText);
-	                        message = response.response_status.message || "An unknown error occurred.";
-	                    } catch (e) {
-	                        message = "An error occurred. Please try again.";
-	                    }
-	                    $('#composeError').html('<p style="color: red;">' + message + '</p>');
-	                }
-                });
+        function toggleDeleteButton() {
+            if (selectedMessages.length > 0) {
+                $('#deleteMessages').prop('disabled', false);
+            } else {
+                $('#deleteMessages').prop('disabled', true);
             }
+        }
+
+        function closeCompose() {
+            $("#composeMessage").hide();
+        }
+
+        function starMessage(messageId) {
+            // Implement star message functionality
+        }
+
+        function markAsRead(messageId) {
+            // Implement mark as read functionality
+        }
+
+        function deleteMessage(messageId) {
+            // Implement delete message functionality
+        }
     </script>
 </body>
 </html>

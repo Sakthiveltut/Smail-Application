@@ -45,23 +45,26 @@ public class Smail extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response){
         String action = request.getServletPath();
-        System.out.println(action);
+        System.out.println("doGet"+action);
         
         HttpSession session = request.getSession(false);
         if (session != null && session.getAttribute("user") != null) {
         	        	
         	String url[] = action.split("/");
+        	System.out.println(Arrays.toString(url));
         	byte size = (byte) url.length;
-        	if(size==2 && Folder.getFolders().containsKey(url[1])) {
-        		System.out.println("if block "+url[1]);
+        	
+        	if("/profile".equals(action)) {
+        		profile(response);
+        	} else if(size==2 && (Folder.getFolders().containsKey(url[1]) || Folder.getStarredName().equals(url[1]) || "unread".equals(url[1]))) {
         		displayMessages(request, response, url[1]);
         		
 	        } else if (size==3 && "messageDetails".equals(url[size-1])) {
-	        	if(Folder.getFolders().containsKey(url[1])) {
+	        	if(Folder.getFolders().containsKey(url[1]) || Folder.getStarredName().equals(url[1]) || "unread".equals(url[1])) {
 		            displayMessageDetails(request, response, url[1]);
 	        	}
 	        } else if (size==3 && "star".equals(url[size-1])) {
- 	        	if(Folder.getFolders().containsKey(url[1])) {
+ 	        	if(Folder.getFolders().containsKey(url[1]) || Folder.getStarredName().equals(url[1]) || "unread".equals(url[1])) {
  		            starMessage(request, response, url[1]);
  	        	} 
 	        } else if ("/signout".equals(action)) {
@@ -74,11 +77,12 @@ public class Smail extends HttpServlet {
         	sendResponse(response, HttpServletResponse.SC_UNAUTHORIZED,STATUS_FAILED, "User session expired. Please sign in again.",null);
         }
     }
-    
+
 	@Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) {
         String action = request.getServletPath();
-
+        System.out.println("doPost "+action);
+        
         if ("/signup".equals(action)) {
             signUp(request, response);
         } else if ("/signin".equals(action)) {
@@ -87,10 +91,74 @@ public class Smail extends HttpServlet {
         	sendMessage(request, response,"sendMessage");
         } else if ("/saveDraft".equals(action)) {
         	saveDraftMessage(request, response);        	
-        } 
+        }
     }
+	
+	@Override
+	protected void doDelete(HttpServletRequest request, HttpServletResponse response) {
+        String action = request.getServletPath();
+        System.out.println("doDelete "+action);
+        
+    	String url[] = action.split("/");
+    	byte size = (byte) url.length;
+    	
+    	 if ("deleteMessages".equals(url[size-1])) {
+        	if(Folder.getFolders().containsKey(url[1]) || Folder.getStarredName().equals(url[1]) || "unread".equals(url[1])) {
+	            deleteMessages(request, response, url[1]);
+        	}
+	     } 
+	}
+	
+	@SuppressWarnings("unchecked")
+	private void profile(HttpServletResponse response) {
+		User user = UserDatabase.getCurrentUser();
+	    JSONObject profile = new JSONObject();
+	    profile.put("email", user.getEmail());
+	    profile.put("name", user.getName());
+	    profile.put("lastLoginTime", user.getLastLoginTime());
+        sendResponse(response, HttpServletResponse.SC_OK, STATUS_SUCCESS, "Messages deleted successfully.", profile);
+	}
 
-    private void sendMessage(HttpServletRequest request, HttpServletResponse response, String messageType) {
+    private void deleteMessages(HttpServletRequest request, HttpServletResponse response, String option) {
+    	System.out.println(request.getParameter("ids"));
+    	
+    	StringBuilder stringBuilder = new StringBuilder();
+        try (BufferedReader reader = request.getReader()) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+            	stringBuilder.append(line);
+            }
+        } catch (IOException e) {
+            sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, "Invalid request body.", null);
+            return;
+        }
+        
+		JSONParser parser = new JSONParser();
+		JSONObject jsonObject = null;
+		try {
+			jsonObject = (JSONObject) parser.parse(stringBuilder.toString());
+			JSONArray messageIds = (JSONArray) jsonObject.get("ids");
+			
+			if(Folder.getBinName().equals(option)){
+				for(Object messageId:messageIds) {
+					messageOperation.deleteMessage((long)messageId,Folder.getFolderId(option));					
+				}
+			}else if(!Folder.getBinName().equals(option)){
+				for(Object messageId:messageIds) {
+					messageOperation.changeMessageFolderId((long)messageId,Folder.getFolderId(option),Folder.getFolderId(Folder.getBinName()));
+				}
+			}
+	        sendResponse(response, HttpServletResponse.SC_OK, STATUS_SUCCESS, "Messages deleted successfully.", null);
+		} catch (ParseException e) {
+	        sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED,"Invalid JSON format.", null);
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+        	sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED, e.getMessage(),null);
+		} 
+	}
+
+	private void sendMessage(HttpServletRequest request, HttpServletResponse response, String messageType) {
 		StringBuilder sb = new StringBuilder();
 		BufferedReader reader;
 		try {
@@ -114,6 +182,7 @@ public class Smail extends HttpServlet {
 		try {
 			jsonObject = (JSONObject) parser.parse(sb.toString());
 		} catch (ParseException e) {
+	        sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED,"Invalid JSON format.", null);
 			e.printStackTrace();
 		}    
 	    
@@ -213,7 +282,12 @@ public class Smail extends HttpServlet {
     private void starMessage(HttpServletRequest request, HttpServletResponse response,String folderName) {
     	long messageId = Long.parseLong(request.getParameter("id"));
     	try {
-			messageOperation.starredMessage(messageId,Folder.getFolderId(folderName));
+    		if(Folder.getStarredName().equals(folderName)) {
+    			messageOperation.starredMessage(messageId);
+    		}else {
+    			messageOperation.starredMessage(messageId,Folder.getFolderId(folderName));    			
+    		}
+            sendResponse(response, HttpServletResponse.SC_OK,STATUS_SUCCESS, null, null);
 		} catch (Exception e) {
 			e.printStackTrace();
         	sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED, e.getMessage(),null);
