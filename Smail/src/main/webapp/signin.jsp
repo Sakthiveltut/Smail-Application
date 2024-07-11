@@ -106,7 +106,7 @@
 	            $('#signInMessage').html('<p style="color: #555;">Signing in, please wait...</p>');
 	            $.ajax({
 	                type: 'POST',
-	                url: '<%= request.getContextPath() %>/signin',
+	                url: '/Smail/signin',
 	                data: $(this).serialize(),
 	                dataType: 'json',
 	                success: function(response) {

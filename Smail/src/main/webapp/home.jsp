@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -198,7 +197,7 @@
         <button id="inbox" class="active"><i class="fa fa-inbox"></i> Inbox</button>
         <button id="starred"><i class="fa fa-star"></i> Starred</button>
         <button id="sent"><i class="fa fa-paper-plane"></i> Sent</button>
-        <button id="unread"><i class="fa fa-envelope-open"></i> Unread</button>
+        <button id="unread"><i class="fa fa-envelope-open"></i> Unread(Inbox)</button>
         <button id="draft"><i class="fa fa-file-alt"></i> Draft</button>
         <button id="spam"><i class="fa fa-exclamation-circle"></i> Spam</button>
         <button id="bin"><i class="fa fa-trash"></i> Bin</button>
@@ -208,6 +207,10 @@
     <div class="content">
     	<div class="profile"></div>
         <h1>Messages</h1>
+        <div id="searchBar">
+	        <input type="text" id="searchInput" placeholder="Search messages...">
+	        <button id="searchButton">Search</button>
+    	</div>
         <button id="deleteMessages" onclick="deleteSelectedMessages()">Delete Selected</button>
         <div id="backButton"><button onclick="showMessageList()">Back to Messages</button></div>
         <div id="messageList"></div>
@@ -236,8 +239,10 @@
         function showMessageList() {
         	$(".profile").hide();
             $("#messageDetails").hide();
+            $("#searchBar").show();
             $("#messageList").show();
             $("#backButton").hide();
+            $("h1").show();
             $("h1").text("Messages");
         }
         
@@ -265,10 +270,13 @@
                 html += "<p><strong>Name:</strong> " + profileData.name + "</p>";
                 html += "<p><strong>Email:</strong> " + profileData.email + "</p>";
                 html += "<p><strong>Last login date and time:</strong> " + profileData.lastLoginTime + "</p>";
+                $("#messageList").hide();
+                $("h1").hide();
+                $("#searchBar").hide();
+                $(".profile").show();
                 $(".profile").html(html);
             }
         });
-
 
         function showMessageDetails(messageId) {
             var option = $(".vertical-nav button.active").attr("id");
@@ -285,8 +293,8 @@
                         html += "<p><strong>From:</strong> " + message.from + "</p>";
                         html += "<p><strong>To:</strong> " + message.to + "</p>";
                         html += "<p><strong>Created:</strong> " + message.created_time + "</p>";
-                        html += "<p><strong>Starred:</strong> " + message.is_starred + "</p>";
-                        html += "<p><strong>Unread:</strong> " + message.is_read + "</p>";
+                        //html += "<p><strong>Starred:</strong> " + message.is_starred + "</p>";
+                        //html += "<p><strong>Unread:</strong> " + message.is_read + "</p>";
                         html += "</div>";
                         html += "<div>";
                         html += "<p><strong>Description:</strong><br>" + message.description + "</p>";
@@ -296,6 +304,7 @@
                         $("#messageList").hide();
                         $("#backButton").show();
                         $("h1").text("Message Details");
+                        $("#message" + messageId).removeClass("unread").addClass("read");
                     } else {
                         $("#messageDetails").html("<p>Error: " + response.response_status.message + "</p>").show();
                         $("#backButton").show();
@@ -310,9 +319,26 @@
         }
 
         function closeCompose() {
+        	clearComposeForm();
             $("#composeMessage").hide();
+            var option = $(".vertical-nav button.active").attr("id");
+            $(".vertical-nav button").removeClass("active");
+            if(option=="compose"){
+                $("#inbox").addClass("active");
+                displayMessages("inbox");
+            }else{
+                $("#"+option).addClass("active");
+                displayMessages(option);
+            }
+            showMessageList();
         }
 
+        function clearComposeForm() {
+            $('#messageForm')[0].reset();
+            $('#id').val('');
+            $('#composeError').text('');
+        }
+        
         function showCompose(headingText = "Compose Message") {
             $("#composeHeading").text(headingText);
             $("#composeMessage").show();
@@ -327,14 +353,17 @@
             showCompose("Edit Message");
         }
         
-        function starMessage(path, buttonElement) {
+        function starMessage(option,messageId, buttonElement) {
             $.ajax({
-                url: path,
+                url: "/Smail/"+option+"/star?id="+messageId,
                 type: 'GET',
                 dataType: 'json',
                 success: function(response) {
                     if (response.response_status.status === 'success') {
                        	$(buttonElement).toggleClass('starred');
+                       	if(option=="starred"){
+                       		displayMessages("starred");
+                       	}
                     } else {
                         console.error('Failed to star message.');
                     }
@@ -383,9 +412,14 @@
             }
         }
 
-            function displayMessages(option) {
+            function displayMessages(option, keyword = "") {		
+                let url = option;
+                if (keyword) {
+                    url += "?search=" + keyword;
+                }
+                
                 $.ajax({
-                    url: option,
+                    url: url,
                     type: "GET",
                     dataType: "json",
                     success: function(response) {
@@ -399,11 +433,13 @@
                                 var html = "<ul class='message-list'>";
                                 $.each(messages, function(index, message) {
                                 	var readClass = message.is_read ? 'read' : 'unread';
-                                    html += "<li class='message-list-item " + readClass + "'>";
+                                    html += "<li id='message" + message.id + "' class='message-list-item " + readClass + "'>";
                                     html += "<input type='checkbox' class='message-checkbox' data-message-id='" + message.id + "'>";
-                                    html += "<button id='star' class='star-button " + (message.is_starred ? "starred" : "") + "' onclick='starMessage(\"" + option + "/star?id=" + message.id + "\", this)'>";
-                                    html += "<i class='fa fa-star'></i>";
-                                    html += "</button>";
+                                    if(option!="bin"){
+                                   		html += "<button id='star' class='star-button " + (message.is_starred ? "starred" : "") + "' onclick='starMessage(\"" + option + "\", \"" + message.id + "\", this)'>";                                    	                                    	
+	                                    html += "<i class='fa fa-star'></i>";
+	                                    html += "</button>";
+                                    }
                                     if (option === 'draft') {
                                         html += "<a href='#' onclick='populateComposeForm(" + JSON.stringify(message) + ")'>";
                                     } else {
@@ -448,6 +484,7 @@
 
             $(".vertical-nav button").click(function(e) {
                 e.preventDefault();
+                $('#searchInput').val('');
                 var option = $(this).attr("id");
                 $(".vertical-nav button").removeClass("active");
                 $(this).addClass("active");
@@ -471,8 +508,19 @@
                 e.preventDefault();
                 submitForm('saveDraft');
             });
+            
+            $("#searchButton").click(function() {
+                var keyword = $("#searchInput").val().trim();
+                var option = $(".vertical-nav button.active").attr("id");
+                if (keyword) {
+                    displayMessages(option, keyword);
+                } else {
+                    displayMessages(option);
+                }
+            });
 
             function submitForm(action) {
+                var option = $(".vertical-nav button.active").attr("id");
                 var formData = {
                 	id: $('#id').val().trim(),	
                     to: $('#to').val().trim(),
@@ -488,10 +536,12 @@
                     dataType: 'json',
                     data: JSON.stringify(formData),
                     success: function(response) {
-                        if (response.response_status && response.response_status.status === "success") {
+                        if (response.response_status.status === "success") {
                             alert('Message ' + (action === 'sendMessage' ? 'sent' : 'saved as draft') + ' successfully!');
+                            if(option!="compose"){
+                            	displayMessages(option);                            	
+                            }
                             closeCompose();
-                            location.reload();
                         } else {
                         	console.log("else block");
                             $('#composeError').text(response.response_status.message || 'Unknown error');

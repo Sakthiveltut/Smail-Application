@@ -298,14 +298,14 @@ public class MessageOperation {
 				}
 			}
 			System.out.println("\u001B[32m"+"Message sent successfully.\n"+"\u001B[0m");
-			String unregisteredEmails=null;
+			String unregisteredEmails="";
 			if(!unregisteredToRecipients.isEmpty()) {
 				for(User user:unregisteredToRecipients) {
 					unregisteredEmails+=user.getEmail()+", ";
 				}
 				throw new InvalidEmailException("To Address not found: "+unregisteredEmails);
 			}if(!unregisteredCcRecipients.isEmpty()) {
-				unregisteredEmails=null;
+				unregisteredEmails="";
 				System.out.print("CC Address not found: ");
 				for(User user:unregisteredCcRecipients) {
 					unregisteredEmails+=user.getEmail()+", ";
@@ -443,9 +443,9 @@ public class MessageOperation {
 	public static JSONArray getMessages(String folderName) throws Exception{	
 		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
 		if(Folder.getStarredName().equals(folderName)) {
-			queryBuilder.append(" AND mf.is_starred = true ");
+			queryBuilder.append(" AND mf.is_starred = true AND f.name !='bin'");
 		}else if("unread".equals(folderName)) {
-			queryBuilder.append(" AND mf.is_read = false ");
+			queryBuilder.append(" AND mf.is_read = false AND f.name ='inbox' ");
 		}else {
 			queryBuilder.append(" AND f.name = ? ");
 		}
@@ -497,34 +497,36 @@ public class MessageOperation {
         return messages;
 	}	
 	
-	public List<Message> getSearchedMessages(String folderName,String searchedkeyword) throws Exception{
+	@SuppressWarnings("unchecked")
+	public static JSONArray getSearchedMessages(String folderName,String searchedkeyword) throws Exception{
 		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
-		if(!Folder.getStarredName().equals(folderName)) {
-			queryBuilder.append(" AND f.name = ? ");
-		}
-		else if(Folder.getStarredName().equals(folderName)) {
+		if(Folder.getStarredName().equals(folderName)) {
 			queryBuilder.append(" AND mf.is_starred = true ");
+		}else if("unread".equals(folderName)) {
+			queryBuilder.append(" AND mf.is_read = false ");
+		}else {
+			queryBuilder.append(" AND f.name = ? ");
 		}
 		queryBuilder.append(" AND (m.subject LIKE ? OR m.description LIKE ?) ");
 		queryBuilder.append(GROUP_BY);
 		Connection connection  = DBConnection.getConnection();
-		List<Message> messages=null;
+		JSONArray messages=null;
 		try(PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())){
 			byte index = 1;
 			preparedStatement.setLong(index++,UserDatabase.getCurrentUser().getUserId());
-			if(!Folder.getStarredName().equals(folderName)) {
+			if(!Folder.getStarredName().equals(folderName) && !"unread".equals(folderName)) {
 				preparedStatement.setString(index++,folderName);
 			}
 			preparedStatement.setString(index++,"%"+searchedkeyword+"%");
 			preparedStatement.setString(index++,"%"+searchedkeyword+"%");
 			try(ResultSet resultSet = preparedStatement.executeQuery()){
 				if(resultSet.isBeforeFirst()) {
-					messages = new ArrayList<>();
+					messages = new JSONArray();
 				}else {
 					System.out.println(MESSAGE_NOT_FOUND);
 					return messages;
 				}
-				while(resultSet.next()){
+				while(resultSet.next()){					
 					long messageId = resultSet.getInt("id");
 					String from = resultSet.getString("sender_email");
 					String to = resultSet.getString("to_recipients");
@@ -536,7 +538,19 @@ public class MessageOperation {
 		            boolean hasAttachment = resultSet.getBoolean("has_attachment");
 		            Timestamp createdTime = resultSet.getTimestamp("created_time");
 					
-		            messages.add(new Message(messageId,from,to,cc,subject,description,isRead,isStarred,hasAttachment,createdTime));
+		            JSONObject message = new JSONObject();
+		            message.put("id", messageId);
+		            message.put("from", from);
+		            message.put("to", to);
+		            message.put("cc", cc);
+		            message.put("subject", subject);
+		            message.put("description", description);
+		            message.put("is_read", isRead);
+		            message.put("is_starred", isStarred);
+		            message.put("has_attachment", hasAttachment);
+		            message.put("created_time", createdTime.toString());
+		            
+		            messages.add(message);
 				}
 			}
 		}catch(Exception e){
@@ -669,13 +683,22 @@ public class MessageOperation {
 		}
 	}
 
-	public void starredMessage(long message_id,byte folderId) throws Exception {
-		String query = "update MessageFolders set is_starred= not is_starred where user_id = ? and message_id = ? and folder_id=?";
+	public void starredMessage(String option,long message_id) throws Exception {
+		String query = null;
+		if(Folder.getStarredName().equals(option)) {
+			query = "update MessageFolders set is_starred= not is_starred where user_id = ? and message_id = ? and is_starred=true";			
+		} else if("unread".equals(option)) {
+			query = "update MessageFolders set is_starred= not is_starred where user_id = ? and message_id = ? and is_read=false";			
+		}else {			
+			query = "update MessageFolders set is_starred= not is_starred where user_id = ? and message_id = ? and folder_id=?";
+		}
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
 			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
 			preparedStatement.setLong(2,message_id);
-			preparedStatement.setLong(3,folderId);
+			if(!Folder.getStarredName().equals(option) && !"unread".equals(option)) {
+				preparedStatement.setLong(3,Folder.getFolderId(option));
+			}
 			int rowsCount = preparedStatement.executeUpdate();
 			if(rowsCount>0)
 				System.out.println("The message has been changed.");
@@ -687,8 +710,8 @@ public class MessageOperation {
 		}
 	}
 	
-	public void starredMessage(long message_id) throws Exception {
-		String query = "update MessageFolders set is_starred= not is_starred where user_id = ? and message_id = ? and is_starred=true";
+	/*public void setMessageUnstar(long message_id) throws Exception {
+		String query = "update MessageFolders set is_starred=false where user_id = ? and message_id = ? and is_starred=true";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
 			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
@@ -702,7 +725,7 @@ public class MessageOperation {
 			e.printStackTrace();
 			throw new Exception("An error occurred while trying to starred message. Please try again later. Error details: "+ e.getMessage());
 		}
-	}
+	}*/
 	
 	/*public void sendMessage(String to,String cc,String subject,String description,String attachmentPaths,Message message){
 	Long messageId = null;

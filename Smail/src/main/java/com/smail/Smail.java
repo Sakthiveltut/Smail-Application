@@ -70,9 +70,9 @@ public class Smail extends HttpServlet {
 	        } else if ("/signout".equals(action)) {
 	            signOut(request, response);
 	        }else {
-	        	System.out.println("url not found");
+	        	System.out.println("Url not found");
+	            sendResponse(response, HttpServletResponse.SC_NOT_FOUND, STATUS_FAILED, "Page not found.", null);
 	        }
-     
         } else {
         	sendResponse(response, HttpServletResponse.SC_UNAUTHORIZED,STATUS_FAILED, "User session expired. Please sign in again.",null);
         }
@@ -208,6 +208,7 @@ public class Smail extends HttpServlet {
 				 message = messageOperation.createMessage();
 			}else {
 				message = messageOperation.getMessage(Folder.getDraftName(),messageId);
+				messageOperation.updateDraftMessage(message);
 			}			
 			messageOperation.sendMessage(messageId==null?"newMessage":"draftMessage", message);
             sendResponse(response, HttpServletResponse.SC_OK,STATUS_SUCCESS, null, message);
@@ -282,11 +283,7 @@ public class Smail extends HttpServlet {
     private void starMessage(HttpServletRequest request, HttpServletResponse response,String folderName) {
     	long messageId = Long.parseLong(request.getParameter("id"));
     	try {
-    		if(Folder.getStarredName().equals(folderName)) {
-    			messageOperation.starredMessage(messageId);
-    		}else {
-    			messageOperation.starredMessage(messageId,Folder.getFolderId(folderName));    			
-    		}
+    		messageOperation.starredMessage(folderName,messageId);    			
             sendResponse(response, HttpServletResponse.SC_OK,STATUS_SUCCESS, null, null);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -350,9 +347,15 @@ public class Smail extends HttpServlet {
     }
 
     private void displayMessages(HttpServletRequest request, HttpServletResponse response, String folderName) {
-    	System.out.println("displayMessages "+folderName);
-        try {
-            JSONArray messages = MessageOperation.getMessages(folderName);
+    	String searchedKeyword = request.getParameter("search");
+    	System.out.println(searchedKeyword);
+    	JSONArray messages = null;
+    	try {
+    		if(searchedKeyword==null) {
+    			messages = MessageOperation.getMessages(folderName);
+    		}else {
+    			messages = MessageOperation.getSearchedMessages(folderName,searchedKeyword);
+    		}
             sendResponse(response, HttpServletResponse.SC_OK,STATUS_SUCCESS,null, messages);
         } catch (Exception e) {
         	sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED,e.getMessage(),null);

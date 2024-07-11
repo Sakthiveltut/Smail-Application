@@ -76,6 +76,12 @@
         .signin-link a:hover {
             color: #5a67d8;
         }
+        .password-policy {
+            font-size: 0.85rem;
+            color: #555;
+            margin-top: -0.5rem;
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -85,6 +91,7 @@
             <input type="text" id="name" name="name" placeholder="Name" pattern="^[A-Za-z]+( [A-Za-z]+)*$" required>
             <input type="email" id="smail" name="smail" placeholder="example@smail.com" pattern="^[a-z0-9]+(\.[a-z0-9]+)*@smail.com" required>
             <input type="password" id="password" name="password" placeholder="Password" pattern="^(?=.*[A-Z])(?=.*[0-9])(?=.*[\W_]).{8,100}$" required>
+            <div class="password-policy">The password must be at least 8 characters long and contain at least one uppercase letter, one number, and one symbol.</div>
             <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm Password" pattern="^(?=.*[A-Z])(?=.*[0-9])(?=.*[\W_]).{8,100}$" required>
             <button type="submit">Sign Up</button>
         </form>
