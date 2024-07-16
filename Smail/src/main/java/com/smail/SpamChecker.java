@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.HashSet;
 
 public class SpamChecker{
-	public static Set<String> spamKeywords = new HashSet<>();;
+	public static Set<String> spamKeywords = new HashSet<>();
 	
 	static {
 		loadSpamKeywords();

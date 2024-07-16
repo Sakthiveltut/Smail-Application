@@ -219,12 +219,13 @@
         <div id="composeMessage">
             <span class="close-icon" onclick="closeCompose()">×</span> 
             <h2 id="composeHeading">Compose Message</h2>
-            <form id="messageForm">
+            <form id="messageForm" enctype="multipart/form-data">
                 <input type="hidden" id="id" name="id"><br><br>
                 <input type="text" id="to" name="to" placeholder="To" required><br><br>
                 <input type="text" id="cc" name="cc" placeholder="CC"><br><br>
                 <input type="text" id="subject" name="subject" placeholder="Subject" required><br><br>
                 <textarea id="description" placeholder="Message Description" name="description" rows="6" required></textarea><br><br>
+                <input type="file" id="attachments" name="attachments" multiple><br><br>
                 <button type="button" id="sendMessage" value="sendMessage">Send</button>
                 <button type="button" id="saveDraft" value="draftMessage">Save as Draft</button>
             </form>
@@ -298,6 +299,13 @@
                         html += "</div>";
                         html += "<div>";
                         html += "<p><strong>Description:</strong><br>" + message.description + "</p>";
+                        if (message.attachments && message.attachments.length > 0) {
+                            html += "<p><strong>Attachments:</strong></p><ul>";
+                            message.attachments.forEach(function(attachment) {
+                                html += "<li><a href='" + attachment.path + "' download='" + attachment.name + "'>" + attachment.name + "</a></li>";
+                            });
+                            html += "</ul>";
+                        }
                         html += "</div>";
                         html += "</div>";
                         $("#messageDetails").html(html).show();
@@ -518,23 +526,26 @@
                     displayMessages(option);
                 }
             });
-
+            
             function submitForm(action) {
                 var option = $(".vertical-nav button.active").attr("id");
-                var formData = {
+               /* var formData = {
                 	id: $('#id').val().trim(),	
                     to: $('#to').val().trim(),
                     cc: $('#cc').val().trim(),
                     subject: $('#subject').val().trim(),
                     description: $('#description').val().trim()
-                };
-
+                };*/
+                
+                var formData = new FormData($('#messageForm')[0]);
                 $.ajax({
+                	enctype :  'multipart/form-data',
                     url: action,
                     method: 'POST',
-                    contentType: 'application/json',
+                    processData:false,
+                    contentType: false,
+                    data: formData,
                     dataType: 'json',
-                    data: JSON.stringify(formData),
                     success: function(response) {
                         if (response.response_status.status === "success") {
                             alert('Message ' + (action === 'sendMessage' ? 'sent' : 'saved as draft') + ' successfully!');
@@ -543,7 +554,6 @@
                             }
                             closeCompose();
                         } else {
-                        	console.log("else block");
                             $('#composeError').text(response.response_status.message || 'Unknown error');
                         }
                     },
@@ -559,6 +569,6 @@
 	                }
                 });
             }
-    </script>
+     </script>
 </body>
 </html>

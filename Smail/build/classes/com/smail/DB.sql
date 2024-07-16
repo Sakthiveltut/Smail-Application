@@ -67,7 +67,7 @@ create table Attachments(
     message_id bigint not null,
     name varchar(255) not null,
     type_id tinyint not null,
-    size int unsigned,
+    size int unsigned,	
     path varchar(255) not null,
     unique key(message_id,name,path),
     foreign key (message_id) references Messages(id) ON DELETE restrict,
@@ -408,7 +408,7 @@ SELECT
     su.email AS sender_email,
     m.subject,
     m.description,
-    m.is_read,
+    mf.is_read,
  	mf.is_starred,
     m.has_attachment,
     m.created_time,
@@ -437,7 +437,7 @@ JOIN
     Folders f ON mf.folder_id = f.id
 WHERE
     mf.user_id = 1
-    AND f.name = "inbox"
+    AND f.name != "inbox"
 	AND (m.subject LIKE '%101%' OR m.description LIKE '%101%') GROUP BY m.id;
     
     

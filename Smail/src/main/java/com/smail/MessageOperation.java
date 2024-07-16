@@ -56,8 +56,11 @@ public class MessageOperation {
 			 	mf.is_starred,
 			    m.created_time,
 			    m.has_attachment,
-			    GROUP_CONCAT(CASE WHEN rt.type = 'to' THEN u.email END SEPARATOR ', ') AS to_recipients,
-			    GROUP_CONCAT(CASE WHEN rt.type = 'cc' THEN u.email END SEPARATOR ', ') AS cc_recipients
+			    GROUP_CONCAT(DISTINCT CASE WHEN rt.type = 'to' THEN u.email END SEPARATOR ', ') AS to_recipients,
+			    GROUP_CONCAT(DISTINCT CASE WHEN rt.type = 'cc' THEN u.email END SEPARATOR ', ') AS cc_recipients,
+			    GROUP_CONCAT(a.name SEPARATOR ', ') AS attachment_names,
+			    GROUP_CONCAT(a.path SEPARATOR ', ') AS attachment_paths,
+			    GROUP_CONCAT(ft.type SEPARATOR ', ') AS attachment_types
 			FROM 
 			    Messages m
 			LEFT JOIN 
@@ -66,6 +69,10 @@ public class MessageOperation {
 			    Users u ON r.user_id = u.id
 			LEFT JOIN 
 			    RecipientTypes rt ON r.type_id = rt.id
+			LEFT JOIN 
+				Attachments a ON m.id = a.message_id
+			LEFT JOIN 
+			 	FileTypes ft ON a.type_id = ft.id
 			JOIN 
 			    MessageFolders mf ON m.id = mf.message_id
 			JOIN 
@@ -470,6 +477,11 @@ public class MessageOperation {
 		            String cc = resultSet.getString("cc_recipients");
 		            String subject = resultSet.getString("subject");
 		            String description = resultSet.getString("description");
+		            
+		            String attachmentNames = resultSet.getString("attachment_names");
+		            String attachmentPaths = resultSet.getString("attachment_paths");
+		            String attachmentTypes = resultSet.getString("attachment_types");
+		            
 		            boolean isRead = resultSet.getBoolean("is_read");
 		            boolean isStarred = resultSet.getBoolean("is_starred");
 		            boolean hasAttachment = resultSet.getBoolean("has_attachment");
@@ -482,12 +494,31 @@ public class MessageOperation {
 		            message.put("cc", cc);
 		            message.put("subject", subject);
 		            message.put("description", description);
+		            
+		            JSONArray attachments = new JSONArray();
+		            if(attachmentNames!=null) {
+			            String attachmentNamesArr[] = attachmentNames.split(",");
+			            String attachmentPathsArr[] = attachmentPaths.split(",");
+			            String attachmentTypesArr[] = attachmentTypes.split(",");
+			            
+			            for(int i=0;i<attachmentNamesArr.length;i++) {
+			            	JSONObject attachment = new JSONObject();
+			            	attachment.put("name", attachmentNamesArr[i]);		            	
+			            	attachment.put("path", attachmentPathsArr[i]);		            	
+			            	attachment.put("type", attachmentTypesArr[i]);	
+			            	attachments.add(attachment);
+			            }
+		            }
+		            message.put("attachments", attachments);
+		            
 		            message.put("is_read", isRead);
 		            message.put("is_starred", isStarred);
 		            message.put("has_attachment", hasAttachment);
 		            message.put("created_time", createdTime.toString());
 		            
-		            messages.add(message); 
+		            messages.add(message);
+		            
+		            System.out.println(messages);
 				}
 			}
 		}catch(Exception e){
@@ -644,6 +675,22 @@ public class MessageOperation {
 		}
 	}
 	
+	public void saveAttachment(long messageId,String fileName,byte typeId,int size,String path) throws Exception{
+		String query = "insert into Attachments(message_id,name,type_id,size,path) values(?,?,?,?,?)";
+		Connection connection  = DBConnection.getConnection();
+		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
+			preparedStatement.setLong(1,messageId);
+			preparedStatement.setString(2,fileName);
+			preparedStatement.setByte(3,typeId);
+			preparedStatement.setInt(4,size);
+			preparedStatement.setString(5,path);
+			preparedStatement.executeUpdate();
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new Exception("An error occurred while trying to add attachments. Please try again later. Error details: "+ e.getMessage());
+		}
+	}
+	
 	public void changeMessageFolderId(long message_id,byte currentFolderId,byte binFolderId) throws Exception{
 		String query = "update MessageFolders set folder_id=? where user_id = ? and message_id = ? and folder_id=?";
 		Connection connection  = DBConnection.getConnection();
@@ -707,6 +754,18 @@ public class MessageOperation {
 		}catch(Exception e){
 			e.printStackTrace();
 			throw new Exception("An error occurred while trying to starred message. Please try again later. Error details: "+ e.getMessage());
+		}
+	}
+
+	public void updateMessage(long messageId) throws Exception {
+		String query = "update Messages set has_attachment=true where id = ?";
+		Connection connection  = DBConnection.getConnection();
+		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
+			preparedStatement.setLong(1,messageId);
+			preparedStatement.executeUpdate();
+		}catch(Exception e){
+			e.printStackTrace();
+			throw new Exception("An error occurred while trying to delete message. Please try again later. Error details: "+ e.getMessage());
 		}
 	}
 	
