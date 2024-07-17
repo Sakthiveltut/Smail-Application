@@ -300,11 +300,11 @@
                         html += "<div>";
                         html += "<p><strong>Description:</strong><br>" + message.description + "</p>";
                         if (message.attachments && message.attachments.length > 0) {
-                            html += "<p><strong>Attachments:</strong></p><ul>";
+                            html += "<p><strong>Attachments:</strong><br>";
                             message.attachments.forEach(function(attachment) {
-                                html += "<li><a href='" + attachment.path + "' download='" + attachment.name + "'>" + attachment.name + "</a></li>";
+                                html += "<a href='#' class='attachment-link' data-attachment-id='" + attachment.id + "' data-message-id='" + messageId + "'>" + attachment.name + "</a><br>";
                             });
-                            html += "</ul>";
+                            html += "</p>";
                         }
                         html += "</div>";
                         html += "</div>";
@@ -433,6 +433,9 @@
                     success: function(response) {
                         if (response.response_status.status_code == 401 || option === "signout") {
                             window.location.href = "/Smail/signin.jsp";
+                            if(option !== "signout"){
+                                    alert("Access Restricted: Please log in to continue.");                            	
+                            }
                             return;
                         }
                         if (response.response_status.status === "success") {
@@ -527,6 +530,37 @@
                 }
             });
             
+            $(document).on('click', '.attachment-link', function(e) {
+                e.preventDefault();
+                var attachmentId = $(this).data('attachment-id');
+                var messageId = $(this).data('message-id');
+                fetchAttachment(messageId,attachmentId);
+            });
+            
+            function fetchAttachment(messageId,attachmentId) {
+                $.ajax({
+                    url: "attachment?attachmentId=" + attachmentId + "&messageId=" + messageId,
+                    type: "GET",
+                    xhrFields: {
+                        responseType: 'blob'
+                    },
+                    success: function(data, status, xhr) {
+                    	console.log(xhr.getResponseHeader('Content-Disposition'));
+                        var filename = xhr.getResponseHeader('Content-Disposition').split('filename=')[1].replace(/['"]/g, '');
+                        var blob = new Blob([data]);
+                        var link = document.createElement('a');
+                        link.href = window.URL.createObjectURL(blob);
+                        link.download = filename;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error fetching attachment details:", error);
+                    }
+                });
+            }
+            
             function submitForm(action) {
                 var option = $(".vertical-nav button.active").attr("id");
                /* var formData = {
@@ -536,7 +570,6 @@
                     subject: $('#subject').val().trim(),
                     description: $('#description').val().trim()
                 };*/
-                
                 var formData = new FormData($('#messageForm')[0]);
                 $.ajax({
                 	enctype :  'multipart/form-data',

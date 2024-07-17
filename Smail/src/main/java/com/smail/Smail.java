@@ -2,9 +2,12 @@ package com.smail;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,10 +46,11 @@ public class Smail extends HttpServlet {
 	private static final String SAVE_DIR = "D:\\Sakthi\\Temp\\Attachments";
 
 	@Override
-	public void init() throws ServletException {
+	public void init() {
 		try {
 			Folder.setFolders();
 			RecipientType.setRecipientTypes();
+			Attachment.loadFileTypes();
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 			e.printStackTrace();
@@ -86,6 +90,9 @@ public class Smail extends HttpServlet {
 				}
 			} else if ("/signout".equals(action)) {
 				signOut(request, response);
+				
+			} else if ("/attachment".equals(action)) {
+						downloadAttachment(request, response);
 			} else {
 				System.out.println("Url not found");
 				sendResponse(response, HttpServletResponse.SC_NOT_FOUND, STATUS_FAILED, "Page not found.", null);
@@ -138,6 +145,47 @@ public class Smail extends HttpServlet {
 
 		sendResponse(response, HttpServletResponse.SC_OK, STATUS_SUCCESS, "Messages deleted successfully.", profile);
 	}
+	
+	private void downloadAttachment(HttpServletRequest request, HttpServletResponse response) {
+		String attachmentIdStr = request.getParameter("attachmentId").trim();
+		String messageIdStr = request.getParameter("messageId").trim();
+        Long attachmentId =Long.parseLong(attachmentIdStr);
+        Long messageId =Long.parseLong(messageIdStr);
+        
+		String filePath = null;
+		try {
+		filePath = messageOperation.fetchAttachmentPath(attachmentId,messageId);
+		System.out.println("filePath "+filePath);
+
+		File downloadFile = new File(filePath);
+		FileInputStream inStream = null;
+		inStream = new FileInputStream(downloadFile);
+
+		String mimeType = getServletContext().getMimeType(filePath);
+		System.out.println("mimeType "+mimeType); 
+		if (mimeType == null) {
+			mimeType = "application/octet-stream";
+		}
+		response.setContentType(mimeType);
+		String headerKey = "Content-Disposition";
+		String headerValue = String.format("attachment; filename=\"%s\"", downloadFile.getName());
+		response.setHeader(headerKey, headerValue);
+		OutputStream outStream = null;
+		outStream = response.getOutputStream();
+		byte[] buffer = new byte[4096];
+		int bytesRead = -1;
+		while ((bytesRead = inStream.read(buffer)) != -1) {
+			System.out.println("bytesRead "+bytesRead);
+			outStream.write(buffer, 0, bytesRead);
+		}
+		System.out.println("outStream "+outStream);
+		inStream.close();
+		outStream.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+			sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, STATUS_FAILED, e.getMessage(), null);
+		}
+	}
 
 	private void deleteMessages(HttpServletRequest request, HttpServletResponse response, String option) {
 		System.out.println(request.getParameter("ids"));
@@ -180,36 +228,6 @@ public class Smail extends HttpServlet {
 	}
 
 	private void sendMessage(HttpServletRequest request, HttpServletResponse response, String messageType) {
-
-		/*
-		 * StringBuilder sb = new StringBuilder(); BufferedReader reader; try { reader =
-		 * request.getReader(); String line; while ((line = reader.readLine()) != null)
-		 * { sb.append(line);} } catch (IOException e) { sendResponse(response,
-		 * HttpServletResponse.SC_INTERNAL_SERVER_ERROR,STATUS_FAILED,e.getMessage(),
-		 * null); return; } System.out.println("Data"+sb.toString());
-		 * 
-		 * if (sb.toString().isEmpty()) { sendResponse(response,
-		 * HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, "Empty request body",
-		 * null); return; }
-		 * 
-		 * JSONParser parser = new JSONParser(); JSONObject jsonObject = null; try {
-		 * jsonObject = (JSONObject) parser.parse(sb.toString()); } catch
-		 * (ParseException e) { sendResponse(response,
-		 * HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED,"Invalid JSON format.",
-		 * null); e.printStackTrace(); }
-		 * 
-		 * Long messageId = null; if (jsonObject.get("id") != null &&
-		 * !jsonObject.get("id").toString().isEmpty()) { try { messageId =
-		 * Long.parseLong(jsonObject.get("id").toString()); } catch
-		 * (NumberFormatException e) { sendResponse(response,
-		 * HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED,
-		 * "Invalid message ID format", null); return; } }
-		 * 
-		 * System.out.println(messageId); String to = (String)jsonObject.get("to");
-		 * String cc = (String)jsonObject.get("cc"); String subject =
-		 * (String)jsonObject.get("subject"); String description =
-		 * (String)jsonObject.get("description"); System.out.println("To: "+to);
-		 */
 		try {
 			String messageIdStr = request.getParameter("id");
 			Long messageId = (messageIdStr != null && !messageIdStr.isEmpty()) ? Long.parseLong(messageIdStr) : null;
@@ -229,36 +247,7 @@ public class Smail extends HttpServlet {
 			messageOperation.sendMessage(messageId == null ? "newMessage" : "draftMessage", message);
 			messageId = (long) message.get("id");
 			
-			boolean hasAttachment = false;
-			for(Part part :request.getParts()) {
-				String fileName = part.getSubmittedFileName();
-				
-			    if (fileName != null && !fileName.isEmpty()) {
-			    	
-			    	hasAttachment = true;
-					System.out.println("File size: "+part.getSize());
-					
-				    String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-				    
-				    String fileExtension = "";
-				    int dotIndex = fileName.lastIndexOf('.');
-				    if (dotIndex != -1) {
-				        fileExtension = fileName.substring(dotIndex);
-				    }
-				    
-				    String newFileName = fileName.substring(0,dotIndex)+'_'+timeStamp+fileExtension;
-				    
-				    String filePath = SAVE_DIR + File.separator + newFileName;
-				    
-				    part.write(filePath);
-				    System.out.println("File size: " + part.getSize());
-	
-					messageOperation.saveAttachment(messageId, fileName, (byte)1,(int)part.getSize(), filePath);
-			    }
-			}
-			if(hasAttachment) {
-				messageOperation.updateMessage(messageId);
-			}
+			attachmentProcess(request,response, messageId);
 			
 			sendResponse(response, HttpServletResponse.SC_OK, STATUS_SUCCESS, null, message);
 		} catch (InvalidInputException | InvalidEmailException e) {
@@ -268,49 +257,48 @@ public class Smail extends HttpServlet {
 			sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, STATUS_FAILED, e.getMessage(), null);
 		}
 	}
+	
+	private void attachmentProcess(HttpServletRequest request , HttpServletResponse response, long messageId) throws IOException, ServletException, Exception {
+		boolean hasAttachment = false;
+		for(Part part :request.getParts()) {
+			String fileName = part.getSubmittedFileName();
+			
+		    if (fileName != null && !fileName.isEmpty()) {
+		    	
+		    	String fileExtension = "";
+		    	int dotIndex = fileName.lastIndexOf('.');
+		    	if (dotIndex != -1) {
+		    		fileExtension = fileName.substring(dotIndex+1);
+		    	}
+			    Map<String,Byte> fileTypes = Attachment.getFileTypes();
+			    
+			    if(fileTypes.containsKey(fileExtension)) {
+			    	hasAttachment = true;
+			    	System.out.println("File size: "+part.getSize());
+			    	String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+			    	String newFileName = fileName.substring(0,dotIndex)+'_'+timeStamp+"."+fileExtension;
+			    	String filePath = SAVE_DIR + File.separator + newFileName;
+			    	part.write(filePath);
+			    	System.out.println("File size: " + part.getSize());
+			    	messageOperation.saveAttachment(messageId, newFileName, fileTypes.get(fileExtension) ,(int)part.getSize(), filePath);
+			    }else {
+					sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, STATUS_FAILED, "File upload failed: The selected file type is not allowed. Please upload files with the following extensions: .jpg, .png, .pdf, etc.", null);
+			    }
+			}
+
+		}
+		if(hasAttachment) {
+			messageOperation.updateMessage(messageId);
+		}
+	}
 
 	private void saveDraftMessage(HttpServletRequest request, HttpServletResponse response) {
-		StringBuilder sb = new StringBuilder();
-		BufferedReader reader;
-		try {
-			reader = request.getReader();
-			String line;
-			while ((line = reader.readLine()) != null) {
-				sb.append(line);
-			}
-		} catch (IOException e) {
-			sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, STATUS_FAILED, e.getMessage(), null);
-			return;
-		}
-
-		if (sb.toString().isEmpty()) {
-			sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, "Empty request body", null);
-			return;
-		}
-
-		JSONParser parser = new JSONParser();
-		JSONObject jsonObject = null;
-		try {
-			jsonObject = (JSONObject) parser.parse(sb.toString());
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
-
-		Long messageId = null;
-		if (jsonObject.get("id") != null && !jsonObject.get("id").toString().isEmpty()) {
-			try {
-				messageId = Long.parseLong(jsonObject.get("id").toString());
-			} catch (NumberFormatException e) {
-				sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, "Invalid message ID format",
-						null);
-				return;
-			}
-		}
-
-		String to = (String) jsonObject.get("to");
-		String cc = (String) jsonObject.get("cc");
-		String subject = (String) jsonObject.get("subject");
-		String description = (String) jsonObject.get("description");
+		String messageIdStr = request.getParameter("id");
+		Long messageId = (messageIdStr != null && !messageIdStr.isEmpty()) ? Long.parseLong(messageIdStr) : null;
+		String to = request.getParameter("to");
+		String cc = request.getParameter("cc");
+		String subject = request.getParameter("subject");
+		String description = request.getParameter("description");
 		messageOperation.inputMessageDetails(to, cc, subject, description);
 		try {
 			JSONObject message = null;
@@ -322,6 +310,8 @@ public class Smail extends HttpServlet {
 				message = messageOperation.getMessage(Folder.getDraftName(), messageId);
 				messageOperation.updateDraftMessage(message);
 			}
+			messageId = (long) message.get("id");
+			attachmentProcess(request, response, messageId);
 			sendResponse(response, HttpServletResponse.SC_OK, STATUS_SUCCESS, null, message);
 		} catch (InvalidInputException | InvalidEmailException e) {
 			sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, e.getMessage(), null);

@@ -75,20 +75,17 @@ create table Attachments(
 );
 insert into Folders(name) values('inbox'),('sent'),('draft'),('spam'),('bin');
 insert into RecipientTypes(type) values('to'),('cc');
-INSERT INTO FileTypes (type) VALUES
+INSERT INTO FileTypes (type) VALUES 
     ('pdf'), ('doc'), ('docx'), ('xls'), ('xlsx'), ('ppt'), ('pptx'), 
     ('txt'), ('rtf'), ('jpg'), ('jpeg'), ('png'), ('gif'), 
     ('mp3'), ('mp4'), ('mkv'), ('zip'), ('rar'), ('7z'), 
     ('gz'), ('tar'), ('tar.gz'); 
 
 #---------------------------------------------------------------------------
-
-
 DELETE Recipients
 FROM Recipients
 JOIN RecipientTypes ON Recipients.type_id = RecipientTypes.id
 WHERE Recipients.message_id = 5 AND RecipientTypes.type = 'to';
-
 
 select * from Users u join RegisteredUsers ru  on u.id = ru.user_id where u.email = "sakthi@smail.com" and ru.password = "Sakthi@123";
 
@@ -440,6 +437,121 @@ WHERE
     AND f.name != "inbox"
 	AND (m.subject LIKE '%101%' OR m.description LIKE '%101%') GROUP BY m.id;
     
+    
+	SELECT 
+	m.id,
+	su.email AS sender_email,
+	m.subject,
+	m.description,
+	mf.is_read,
+	mf.is_starred,
+	m.created_time,
+	m.has_attachment,
+	GROUP_CONCAT(CASE WHEN rt.type = 'to' THEN u.email END SEPARATOR ', ') AS to_recipients,
+	GROUP_CONCAT(CASE WHEN rt.type = 'cc' THEN u.email END SEPARATOR ', ') AS cc_recipients,
+	MAX(a.name) AS attachment_name,
+	MAX(a.path) AS attachment_path,
+	MAX(ft.type) AS attachment_type
+FROM 
+	Messages m
+LEFT JOIN 
+	Recipients r ON m.id = r.message_id
+LEFT JOIN 
+	Users u ON r.user_id = u.id
+LEFT JOIN 
+	RecipientTypes rt ON r.type_id = rt.id
+LEFT JOIN 
+	Attachments a ON m.id = a.message_id
+LEFT JOIN 
+	FileTypes ft ON a.type_id = ft.id
+JOIN 
+	MessageFolders mf ON m.id = mf.message_id
+JOIN 
+	Users su ON m.sender_id = su.id
+JOIN 
+	Folders f ON mf.folder_id = f.id
+WHERE 
+	mf.user_id = 1
+     AND m.id =  71;
+     
+SELECT 
+    m.id,
+    su.email AS sender_email,
+    m.subject,
+    m.description,
+    mf.is_read,
+    mf.is_starred,
+    m.created_time,
+    m.has_attachment,
+    GROUP_CONCAT(distinct CASE WHEN rt.type = 'to' THEN u.email END SEPARATOR ', ') AS to_recipients,
+    GROUP_CONCAT(distinct CASE WHEN rt.type = 'cc' THEN u.email END SEPARATOR ', ') AS cc_recipients,
+	GROUP_CONCAT(a.id SEPARATOR ', ') AS attachment_ids,
+    GROUP_CONCAT(a.name SEPARATOR ', ') AS attachment_names,
+    GROUP_CONCAT(a.path SEPARATOR ', ') AS attachment_paths,
+    GROUP_CONCAT(ft.type SEPARATOR ', ') AS attachment_types
+FROM 
+    Messages m
+LEFT JOIN 
+    Recipients r ON m.id = r.message_id
+LEFT JOIN 
+    Users u ON r.user_id = u.id
+LEFT JOIN 
+    RecipientTypes rt ON r.type_id = rt.id
+LEFT JOIN 
+    Attachments a ON m.id = a.message_id
+LEFT JOIN 
+    FileTypes ft ON a.type_id = ft.id
+JOIN 
+    MessageFolders mf ON m.id = mf.message_id
+JOIN 
+    Users su ON m.sender_id = su.id
+JOIN 
+    Folders f ON mf.folder_id = f.id
+WHERE 
+    mf.user_id = 1
+    AND m.id = 73 AND a.id = 1
+GROUP BY 
+    m.id;
+    
+			SELECT 
+			    m.id,
+			    su.email AS sender_email,
+			    m.subject,
+			    m.description,
+			    mf.is_read,
+			 	mf.is_starred,
+			    m.created_time,
+			    m.has_attachment,
+			    a.path,
+			    GROUP_CONCAT(DISTINCT CASE WHEN rt.type = 'to' THEN u.email END SEPARATOR ', ') AS to_recipients,
+			    GROUP_CONCAT(DISTINCT CASE WHEN rt.type = 'cc' THEN u.email END SEPARATOR ', ') AS cc_recipients,
+			    GROUP_CONCAT(a.id SEPARATOR ', ') AS attachment_ids,
+			    GROUP_CONCAT(a.name SEPARATOR ', ') AS attachment_names,
+			    GROUP_CONCAT(a.path SEPARATOR ', ') AS attachment_paths,
+			    GROUP_CONCAT(ft.type SEPARATOR ', ') AS attachment_types
+			FROM 
+			    Messages m
+			LEFT JOIN 
+			    Recipients r ON m.id = r.message_id
+			LEFT JOIN 
+			    Users u ON r.user_id = u.id
+			LEFT JOIN 
+			    RecipientTypes rt ON r.type_id = rt.id
+			LEFT JOIN 
+				Attachments a ON m.id = a.message_id
+			LEFT JOIN 
+			 	FileTypes ft ON a.type_id = ft.id
+			JOIN 
+			    MessageFolders mf ON m.id = mf.message_id
+			JOIN 
+			    Users su ON m.sender_id = su.id
+			JOIN 
+			    Folders f ON mf.folder_id = f.id
+			WHERE 
+			    mf.user_id = 1 AND m.id = 75 AND a.id = 19
+			GROUP BY 
+				m.id;
+
     
 
 set sql_safe_updates = 0;

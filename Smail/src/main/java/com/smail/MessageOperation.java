@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.json.simple.JSONObject;
+import org.apache.catalina.tribes.util.Arrays;
 import org.json.simple.JSONArray;
 
 import com.smail.custom_exception.InvalidEmailException;
@@ -58,6 +59,7 @@ public class MessageOperation {
 			    m.has_attachment,
 			    GROUP_CONCAT(DISTINCT CASE WHEN rt.type = 'to' THEN u.email END SEPARATOR ', ') AS to_recipients,
 			    GROUP_CONCAT(DISTINCT CASE WHEN rt.type = 'cc' THEN u.email END SEPARATOR ', ') AS cc_recipients,
+			    GROUP_CONCAT(a.id SEPARATOR ', ') AS attachment_ids,
 			    GROUP_CONCAT(a.name SEPARATOR ', ') AS attachment_names,
 			    GROUP_CONCAT(a.path SEPARATOR ', ') AS attachment_paths,
 			    GROUP_CONCAT(ft.type SEPARATOR ', ') AS attachment_types
@@ -83,7 +85,8 @@ public class MessageOperation {
 			    mf.user_id = ?   
 			""";
 	
-	private final static String GROUP_BY = "GROUP BY m.id;";
+	private final static String GROUP_BY = " GROUP BY m.id";
+	private final static String ORDER_BY = " ORDER BY m.created_time DESC;";
 		
 	/*public void viewMessageOptions(String folderName) throws Exception{  
 		InputHandler inputHandler = new InputHandler();
@@ -371,6 +374,37 @@ public class MessageOperation {
 			throw new Exception("Error during send message. Please go back and try again. Error details: " + e.getMessage());
 		}
 	}
+	public String fetchAttachmentPath(long attachmentId,long messageId) throws Exception {	
+		String query = """
+				SELECT 
+				    a.path 
+				FROM 
+				    Attachments a
+				JOIN 
+				    MessageFolders mf ON a.message_id = mf.message_id
+				WHERE 
+				    mf.user_id = ? 
+				    AND mf.message_id = ? 
+				    AND a.id = ?;
+				""";
+		Connection connection  = DBConnection.getConnection();
+		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
+			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
+			preparedStatement.setLong(2,messageId);
+			preparedStatement.setLong(3,attachmentId);
+			try(ResultSet resultSet = preparedStatement.executeQuery()){
+				if(resultSet.next()) {
+					String path = resultSet.getString("path");
+					return path;					
+				}else {
+					throw new Exception("Attachment not found");
+				}
+			}
+		}catch(Exception e){
+			e.printStackTrace();
+			throw new Exception("Error during send message. Please go back and try again. Error details: " + e.getMessage());
+		}
+	}
 	public void separateRecipientId(String emails[],Set<Long> validRecipientIds,Set<User> unregisteredRecipientIds) throws Exception {
 		for(String email:emails){
 			User user = UserDatabase.userExists(email);
@@ -457,6 +491,7 @@ public class MessageOperation {
 			queryBuilder.append(" AND f.name = ? ");
 		}
 		queryBuilder.append(GROUP_BY);
+		queryBuilder.append(ORDER_BY);
 		Connection connection = DBConnection.getConnection();
 		JSONArray messages = null;
 		try(PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())){
@@ -478,10 +513,6 @@ public class MessageOperation {
 		            String subject = resultSet.getString("subject");
 		            String description = resultSet.getString("description");
 		            
-		            String attachmentNames = resultSet.getString("attachment_names");
-		            String attachmentPaths = resultSet.getString("attachment_paths");
-		            String attachmentTypes = resultSet.getString("attachment_types");
-		            
 		            boolean isRead = resultSet.getBoolean("is_read");
 		            boolean isStarred = resultSet.getBoolean("is_starred");
 		            boolean hasAttachment = resultSet.getBoolean("has_attachment");
@@ -494,23 +525,6 @@ public class MessageOperation {
 		            message.put("cc", cc);
 		            message.put("subject", subject);
 		            message.put("description", description);
-		            
-		            JSONArray attachments = new JSONArray();
-		            if(attachmentNames!=null) {
-			            String attachmentNamesArr[] = attachmentNames.split(",");
-			            String attachmentPathsArr[] = attachmentPaths.split(",");
-			            String attachmentTypesArr[] = attachmentTypes.split(",");
-			            
-			            for(int i=0;i<attachmentNamesArr.length;i++) {
-			            	JSONObject attachment = new JSONObject();
-			            	attachment.put("name", attachmentNamesArr[i]);		            	
-			            	attachment.put("path", attachmentPathsArr[i]);		            	
-			            	attachment.put("type", attachmentTypesArr[i]);	
-			            	attachments.add(attachment);
-			            }
-		            }
-		            message.put("attachments", attachments);
-		            
 		            message.put("is_read", isRead);
 		            message.put("is_starred", isStarred);
 		            message.put("has_attachment", hasAttachment);
@@ -636,6 +650,32 @@ public class MessageOperation {
 		            message.put("cc", cc);
 		            message.put("subject", subject);
 		            message.put("description", description);
+		            
+		            String attachmentIds = resultSet.getString("attachment_ids");
+		            String attachmentNames = resultSet.getString("attachment_names");
+		            String attachmentPaths = resultSet.getString("attachment_paths");
+		            String attachmentTypes = resultSet.getString("attachment_types");
+		            
+		            JSONArray attachments = new JSONArray();
+		            if(attachmentNames!=null) {
+			            String attachmentIdsArr[] = attachmentIds.split(",");
+			            String attachmentNamesArr[] = attachmentNames.split(",");
+			            String attachmentPathsArr[] = attachmentPaths.split(",");
+			            String attachmentTypesArr[] = attachmentTypes.split(",");
+			            
+			            System.out.println(Arrays.toString(attachmentNamesArr));
+			            
+			            for(int i=0;i<attachmentNamesArr.length;i++) {
+			            	JSONObject attachment = new JSONObject();
+			            	attachment.put("id", attachmentIdsArr[i]);		            	
+			            	attachment.put("name", attachmentNamesArr[i]);		            	
+			            	attachment.put("path", attachmentPathsArr[i]);		            	
+			            	attachment.put("type", attachmentTypesArr[i]);	
+			            	attachments.add(attachment);
+			            }
+		            }
+		            message.put("attachments", attachments);
+		            
 		            message.put("is_read", isRead);
 		            message.put("is_starred", isStarred);
 		            message.put("has_attachment", hasAttachment);
