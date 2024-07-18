@@ -1,16 +1,6 @@
 package com.smail;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.sql.SQLException;
-import java.util.Date;
-import java.text.SimpleDateFormat;
-import java.text.ParseException;
-import java.util.List;
 import java.util.Objects;
-import java.util.ArrayList;
  
 public class User{
 	private String name,email,password,lastLoginTime;

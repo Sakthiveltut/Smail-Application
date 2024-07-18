@@ -3,19 +3,12 @@ package com.smail;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Date;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
 import javax.servlet.ServletException;
@@ -108,15 +101,18 @@ public class Smail extends HttpServlet {
 		String action = request.getServletPath();
 		System.out.println("doPost " + action);
 
-		if ("/signup".equals(action)) {
-			signUp(request, response);
-		} else if ("/signin".equals(action)) {
-			signIn(request, response);
-		} else if ("/sendMessage".equals(action)) {
-			sendMessage(request, response, "sendMessage");
-		} else if ("/saveDraft".equals(action)) {
-			saveDraftMessage(request, response);
-		}
+			if ("/signup".equals(action)) {
+				signUp(request, response);
+			} else if ("/signin".equals(action)) {
+				signIn(request, response);
+			} else if ("/sendMessage".equals(action)) {
+				sendMessage(request, response, "sendMessage");
+			} else if ("/saveDraft".equals(action)) {
+				saveDraftMessage(request, response);
+			} else {
+				System.out.println("Url not found");
+				sendResponse(response, HttpServletResponse.SC_NOT_FOUND, STATUS_FAILED, "Page not found.", null);
+			}
 	}
 
 	@Override
@@ -127,11 +123,41 @@ public class Smail extends HttpServlet {
 		String url[] = action.split("/");
 		byte size = (byte) url.length;
 
-		if ("deleteMessages".equals(url[size - 1])) {
-			if (Folder.getFolders().containsKey(url[1]) || Folder.getStarredName().equals(url[1])
-					|| "unread".equals(url[1])) {
-				deleteMessages(request, response, url[1]);
+		HttpSession session = request.getSession(false);
+		if (session != null && session.getAttribute("user") != null) {
+			if ("deleteMessages".equals(url[size - 1])) {
+				if (Folder.getFolders().containsKey(url[1]) || Folder.getStarredName().equals(url[1])
+						|| "unread".equals(url[1])) {
+					deleteMessages(request, response, url[1]);
+				}
+			}else if("/deleteAttachment".equals(action)) {
+				deleteAttachment(request, response);
+				System.out.println("deleteAttachment called");
+			} else {
+				System.out.println("Url not found");
+				sendResponse(response, HttpServletResponse.SC_NOT_FOUND, STATUS_FAILED, "Page not found.", null);
 			}
+		} else {
+			sendResponse(response, HttpServletResponse.SC_UNAUTHORIZED, STATUS_FAILED,
+					"User session expired. Please sign in again.", null);
+		}
+	}
+
+	private void deleteAttachment(HttpServletRequest request, HttpServletResponse response) {
+		String attachmentIdStr = request.getParameter("attachmentId").trim();
+		Long attachmentId = Long.parseLong(attachmentIdStr);
+		
+		String messageIdStr = request.getParameter("messageId").trim();
+		Long messageId = Long.parseLong(messageIdStr);
+		
+		System.out.println("attachmentId "+attachmentId+"messageId "+messageId);
+		
+		try {
+			messageOperation.deleteAttachment(attachmentId, messageId);
+			sendResponse(response, HttpServletResponse.SC_OK, STATUS_SUCCESS, "Messages deleted successfully.", null);
+		} catch (Exception e) {
+			e.printStackTrace();
+			sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, STATUS_FAILED, e.getMessage(), null);
 		}
 	}
 
@@ -188,7 +214,7 @@ public class Smail extends HttpServlet {
 	}
 
 	private void deleteMessages(HttpServletRequest request, HttpServletResponse response, String option) {
-		System.out.println(request.getParameter("ids"));
+		System.out.println("deleteMessage ids "+request.getParameter("ids"));
 
 		StringBuilder stringBuilder = new StringBuilder();
 		try (BufferedReader reader = request.getReader()) {
@@ -209,12 +235,19 @@ public class Smail extends HttpServlet {
 
 			if (Folder.getBinName().equals(option)) {
 				for (Object messageId : messageIds) {
-					messageOperation.deleteMessage((long) messageId, Folder.getFolderId(option));
+					if(messageId!=null) {
+						messageOperation.deleteMessage((long) messageId,option);						
+					}else {
+						sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, "Message not found.", null);
+					}
 				}
 			} else if (!Folder.getBinName().equals(option)) {
 				for (Object messageId : messageIds) {
-					messageOperation.changeMessageFolderId((long) messageId, Folder.getFolderId(option),
-							Folder.getFolderId(Folder.getBinName()));
+					if(messageId!=null) {
+						messageOperation.changeMessageFolderId((long) messageId, option,Folder.getFolderId(Folder.getBinName()));
+					}else {
+						sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, "Message not found.", null);
+					}
 				}
 			}
 			sendResponse(response, HttpServletResponse.SC_OK, STATUS_SUCCESS, "Messages deleted successfully.", null);
@@ -280,15 +313,14 @@ public class Smail extends HttpServlet {
 			    	String filePath = SAVE_DIR + File.separator + newFileName;
 			    	part.write(filePath);
 			    	System.out.println("File size: " + part.getSize());
-			    	messageOperation.saveAttachment(messageId, newFileName, fileTypes.get(fileExtension) ,(int)part.getSize(), filePath);
+			    	messageOperation.saveAttachment(messageId, newFileName, fileTypes.get(fileExtension) ,part.getSize(), filePath);
 			    }else {
 					sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, STATUS_FAILED, "File upload failed: The selected file type is not allowed. Please upload files with the following extensions: .jpg, .png, .pdf, etc.", null);
 			    }
 			}
-
 		}
 		if(hasAttachment) {
-			messageOperation.updateMessage(messageId);
+			messageOperation.updateAttachmentStatus(messageId);
 		}
 	}
 

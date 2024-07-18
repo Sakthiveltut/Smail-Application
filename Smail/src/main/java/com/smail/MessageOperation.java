@@ -1,17 +1,11 @@
 package com.smail;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import org.json.simple.JSONObject;
 import org.apache.catalina.tribes.util.Arrays;
@@ -23,28 +17,10 @@ import com.smail.custom_exception.MessageNotFoundException;
 
 public class MessageOperation {
 	
-	private String to,cc,subject,description,attachments;
+	private String to,cc,subject,description;
 	private Set<Long> validToRecipientIds,validCcRecipientIds;
 	private Set<User> unregisteredToRecipients,unregisteredCcRecipients;
-		
-	private static final byte SEARCH_OPTION=1, DELETE_OPTION=2,STARRED_OPTION=4,EXIT_OPTION=3, MOVE_TO_INBOX=5, EDIT=5, SENT=6;
-	private static final String FROM = "\u001B[33m"+"From: "+"\u001B[0m";
-	private static final String TO = "To(Separated with comma(,)): ";
-	private static final String CC = "CC(Separated with comma(,)): ";
-	private static final String SUBJECT = "Subject: ";
-	private static final String DESCRIPTION = "Description: ";
-	private static final String ATTACHMENTS = "Attachments: ";
 	
-	private static final String SPAM_MESSAGE_OPTIONS = "1.Search\n2.Delete\n3.Exit\n4.Starred\n5.Move to inbox";
-	private static final String DRAFT_MESSAGE_OPTIONS = "1.Search\n2.Delete\n3.Exit\n4.Starred\n5.Edit\n6.Send";
-	private static final String MESSAGE_OPTIONS = "1.Search\n2.Delete\n3.Exit\n4.Starred";
-	private static final String BIN_MESSAGE_OPTIONS = "1.Search\n2.Delete\n3.Exit";
-	
-	private static final String MESSAGE_ID = "Enter message id: ";
-
-	private static final String SEARCH_MAIL = "Search mail: ";
-	private static final String CHOICE = "Enter your choice: ";
-	private static final String INVALID_INPUT = "\033[31m"+"Invalid input."+"\033[0m";
 	private static final String MESSAGE_NOT_FOUND = "\033[31m"+"Message not found."+"\033[0m";
 	
 	private final static String BASE_QUERY = """
@@ -87,76 +63,6 @@ public class MessageOperation {
 	
 	private final static String GROUP_BY = " GROUP BY m.id";
 	private final static String ORDER_BY = " ORDER BY m.created_time DESC;";
-		
-	/*public void viewMessageOptions(String folderName) throws Exception{  
-		InputHandler inputHandler = new InputHandler();
-		long userId = currentUser.getUserId();
-		displayMessages(getMessages(folderName));
-		if(Folder.getSpamName().equals(folderName))
-			System.out.println(SPAM_MESSAGE_OPTIONS);
-		else if(Folder.getDraftName().equals(folderName))
-			System.out.println(DRAFT_MESSAGE_OPTIONS);
-		else if(Folder.getBinName().equals(folderName))
-			System.out.println(BIN_MESSAGE_OPTIONS);
-		else
-			System.out.println(MESSAGE_OPTIONS);
-		Byte choice = inputHandler.readByte(CHOICE);
-		if(choice!=null){																																																								
-			if(SEARCH_OPTION==choice){
-				String searchedKeyword = inputHandler.readString(SEARCH_MAIL);
-				List<Message> message = getSearchedMessages(folderName,searchedKeyword);
-				if(message!=null) {
-					displayMessages(message);
-				}
-			}else if(DELETE_OPTION==choice){
-				Long message_id = inputHandler.readLong(MESSAGE_ID);
-				if(message_id!=null) {					
-					if(Folder.getBinName().equals(folderName)){
-						deleteMessage(message_id,Folder.getFolderId(folderName));
-					}
-					else if(!Folder.getBinName().equals(folderName)){
-						changeMessageFolderId(userId,message_id,Folder.getFolderId(folderName),Folder.getFolderId(Folder.getBinName()));
-					}
-				}
-			}else if(STARRED_OPTION==choice && folderName!=Folder.getBinName()){
-				Long message_id = inputHandler.readLong(MESSAGE_ID);
-				if(message_id!=null) {
-					setStarredMessage(message_id,Folder.getFolderId(folderName));
-				}
-			}else if(Folder.getSpamName().equals(folderName) && MOVE_TO_INBOX==choice) {
-				Long message_id = inputHandler.readLong(MESSAGE_ID);
-				if(message_id!=null) {
-					changeMessageFolderId(userId,message_id,Folder.getFolderId(folderName),Folder.getFolderId(Folder.getInboxName()));
-				}
-			}else if(Folder.getDraftName().equals(folderName) && EDIT==choice) {
-				Long message_id = inputHandler.readLong(MESSAGE_ID);
-				if(message_id!=null) {
-					Message originalMessage = getMessage(folderName,message_id);
-					if(originalMessage!=null) {
-						System.out.println("From: " + originalMessage.getFrom());
-						System.out.println("To: " + originalMessage.getTo());
-						if(originalMessage.getCc()!=null) {
-							System.out.println("CC: " + originalMessage.getCc());
-						} 
-						System.out.println("Subject: " + originalMessage.getSubject());
-						System.out.println("Description: " + originalMessage.getDescription());
-						System.out.println("--------------------------------------------------------");
-						
-						inputMessageDetails();
-						updateDraftMessage(originalMessage);
-					}
-				}
-			}else if(Folder.getDraftName().equals(folderName) && SENT==choice){
-				Long messageId = inputHandler.readLong(MESSAGE_ID);
-				if(messageId!=null) {
-					Message message = getMessage(Folder.getDraftName(),messageId);
-					sendMessage(folderName, message);
-				}
-			}else if(!(EXIT_OPTION==choice)){
-				throw new InvalidInputException("Invalid choice.Please try again...");
-			}
-		}
-	}*/
 	
 	public void updateDraftMessage(JSONObject originalMessage) throws Exception {
 		if(isValidMessage()) {
@@ -185,7 +91,7 @@ public class MessageOperation {
 		this.description = description;
 	}
 	
-	public boolean isValidMessage() throws InvalidInputException {
+	private boolean isValidMessage() throws InvalidInputException {
 		if(!to.isEmpty()){
 			String toEmails[] = to.split(",");
 			if(toEmails.length!=0){
@@ -233,7 +139,7 @@ public class MessageOperation {
 		return null;
 	}
 	
-	public void setToRecipients(long messageId) throws Exception {
+	private void setToRecipients(long messageId) throws Exception {
 		String toEmails[] = to.split(",");
 		validToRecipientIds = new HashSet<>();	
 		setRecipientIds(toEmails,validToRecipientIds);
@@ -241,7 +147,7 @@ public class MessageOperation {
 			setRecipient(messageId,UserId,RecipientType.getRecipientType("to"));
 		}
 	}
-	public void setCcRecipients(long messageId) throws Exception {
+	private void setCcRecipients(long messageId) throws Exception {
 		if(!cc.isEmpty()) {
 			String ccEmails[] = to.split(",");
 			validCcRecipientIds = new HashSet<>();
@@ -250,25 +156,6 @@ public class MessageOperation {
 				if(!validToRecipientIds.contains(UserId)) {//To reduce duplicate entries in the MessageFolders table, ensure that both the 'To' and 'Cc' fields contain the same email address.
 					setRecipient(messageId,UserId,RecipientType.getRecipientType("cc"));
 				}
-			}
-		}
-	}
-	
-	public void displayMessages(List<Message> messages) {
-		if(messages!=null) {
-			for(Message message:messages) {
-				System.out.println("Id: " + message.getMessageId());
-				System.out.println("From: " + message.getFrom());
-				System.out.println("To: " + message.getTo());
-				if(message.getCc()!=null) {
-					System.out.println("CC: " + message.getCc());
-				}
-				System.out.println("Subject: " + message.getSubject());
-				System.out.println("Description: " + message.getDescription());
-				System.out.println("Unread: " + (message.isRead()?"Yes":"No"));
-				System.out.println("Starred: " + (message.isStarred()?"Yes":"No"));
-				System.out.println("Created At: " + message.getCreatedTime());
-				System.out.println("--------------------------------------------------------");
 			}
 		}
 	}
@@ -325,7 +212,7 @@ public class MessageOperation {
 		}
 	}
 	
-	public void deleteRecipient(Long messageId,byte recipientType) throws Exception {
+	private void deleteRecipient(Long messageId,byte recipientType) throws Exception {
 		String query = "delete from Recipients where message_id = ? and type_id = ?";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
@@ -337,7 +224,67 @@ public class MessageOperation {
 			throw new Exception("Error during edit draft message. Please go back and try again. Error details: " + e.getMessage());
 		}
 	}
-	public void updateSubjectField(Long messageId,String data) throws Exception {
+	
+	public void deleteAttachment(long attachmentId,long messageId) throws Exception {	
+		String query = """
+				DELETE A
+				FROM Attachments A
+				JOIN MessageFolders MF ON A.message_id = MF.message_id
+				WHERE MF.user_id = ?
+				  AND A.message_id = ?
+				  AND A.id = ?
+				  AND MF.folder_id = ?;
+				""";
+		Connection connection  = DBConnection.getConnection();
+		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
+			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
+			preparedStatement.setLong(2,messageId);
+			preparedStatement.setLong(3,attachmentId);
+			preparedStatement.setLong(4,Folder.getFolderId(Folder.getDraftName()));
+			int rowsCount = preparedStatement.executeUpdate();
+			if(rowsCount>0) {
+				changeAttachmentStatus(messageId);
+			}else {
+				throw new Exception("Error during delete attachment. Please go back and try again.");				
+			}
+		}catch(Exception e){
+			e.printStackTrace();
+			throw new Exception("Error during send message. Please go back and try again. Error details: " + e.getMessage());
+		}
+	}
+	
+	private void changeAttachmentStatus(long messageId) throws Exception {
+		String query = """
+					UPDATE Messages M
+					SET M.has_attachment = (
+					    SELECT CASE
+					               WHEN EXISTS (
+					                   SELECT 1
+					                   FROM Attachments A
+					                   JOIN MessageFolders MF ON A.message_id = MF.message_id
+					                   WHERE MF.message_id = M.id
+					                     AND MF.user_id = ?
+					                     AND MF.folder_id = ?
+					               )
+					                   THEN true
+					               ELSE false
+					           END
+					)
+					WHERE M.id = ?;
+				""";
+		Connection connection  = DBConnection.getConnection();
+		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
+			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
+			preparedStatement.setLong(2,Folder.getFolderId(Folder.getDraftName()));
+			preparedStatement.setLong(3,messageId);
+			preparedStatement.executeUpdate();
+		}catch(Exception e){
+			e.printStackTrace();
+			throw new Exception("Error during send message. Please go back and try again. Error details: " + e.getMessage());
+		}
+	}
+
+	private void updateSubjectField(Long messageId,String data) throws Exception {
 		String query = "update Messages set subject=? where id = ?";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
@@ -349,7 +296,7 @@ public class MessageOperation {
 			throw new Exception("Error during edit draft message. Please go back and try again. Error details: " + e.getMessage());
 		}
 	}
-	public void updateDescriptionField(Long messageId,String data) throws Exception {
+	private void updateDescriptionField(Long messageId,String data) throws Exception {
 		String query = "update Messages set description=? where id = ?";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
@@ -361,7 +308,7 @@ public class MessageOperation {
 			throw new Exception("Error during edit draft message. Please go back and try again. Error details: " + e.getMessage());
 		}
 	}	
-	public void updateMessageFolder(long userId,Long messageId,byte folderId) throws Exception {
+	private void updateMessageFolder(long userId,Long messageId,byte folderId) throws Exception {
 		String query = "update MessageFolders set folder_id=? where user_id = ? and message_id = ?";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
@@ -405,7 +352,7 @@ public class MessageOperation {
 			throw new Exception("Error during send message. Please go back and try again. Error details: " + e.getMessage());
 		}
 	}
-	public void separateRecipientId(String emails[],Set<Long> validRecipientIds,Set<User> unregisteredRecipientIds) throws Exception {
+	private void separateRecipientId(String emails[],Set<Long> validRecipientIds,Set<User> unregisteredRecipientIds) throws Exception {
 		for(String email:emails){
 			User user = UserDatabase.userExists(email);
 			long userId;
@@ -424,7 +371,7 @@ public class MessageOperation {
 			}
 		}
 	}
-	public void setRecipientIds(String emails[],Set<Long> validRecipientIds) throws Exception{
+	private void setRecipientIds(String emails[],Set<Long> validRecipientIds) throws Exception{
 		for(String email:emails){
 			email = email.trim();
 			User user = UserDatabase.userExists(email);
@@ -434,7 +381,7 @@ public class MessageOperation {
 			validRecipientIds.add(user.getUserId());
 		}
 	}
-	public Long setMessage(long id,String subject,String description) throws Exception{
+	private Long setMessage(long id,String subject,String description) throws Exception{
 		String query = "insert into Messages(sender_id,subject,description) values(?,?,?)";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query,Statement.RETURN_GENERATED_KEYS)){
@@ -453,7 +400,7 @@ public class MessageOperation {
 		}
 		return null;
 	}
-	public void setRecipient(long message_id,long user_id,byte type) throws Exception{
+	private void setRecipient(long message_id,long user_id,byte type) throws Exception{
 		String query = "insert into Recipients(message_id,user_id,type_id) values(?,?,?)";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
@@ -512,7 +459,6 @@ public class MessageOperation {
 		            String cc = resultSet.getString("cc_recipients");
 		            String subject = resultSet.getString("subject");
 		            String description = resultSet.getString("description");
-		            
 		            boolean isRead = resultSet.getBoolean("is_read");
 		            boolean isStarred = resultSet.getBoolean("is_starred");
 		            boolean hasAttachment = resultSet.getBoolean("has_attachment");
@@ -681,6 +627,7 @@ public class MessageOperation {
 		            message.put("has_attachment", hasAttachment);
 		            message.put("created_time", createdTime.toString());
 		            
+		            System.out.println("messageDetails "+message);
 					return message;
 				}else
 					System.out.println("Message id not found");
@@ -692,7 +639,7 @@ public class MessageOperation {
 		return null;
 	}
 	
-	public void setMessageAsRead(long message_id,String folderName) throws Exception{
+	private void setMessageAsRead(long message_id,String folderName) throws Exception{
 		String query = null;
 		if(Folder.getStarredName().equals(folderName)) {
 			query = "update MessageFolders set is_read=true where user_id = ? and message_id = ? and is_starred=true";			
@@ -715,14 +662,14 @@ public class MessageOperation {
 		}
 	}
 	
-	public void saveAttachment(long messageId,String fileName,byte typeId,int size,String path) throws Exception{
+	public void saveAttachment(long messageId,String fileName,byte typeId,long size,String path) throws Exception{
 		String query = "insert into Attachments(message_id,name,type_id,size,path) values(?,?,?,?,?)";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
 			preparedStatement.setLong(1,messageId);
 			preparedStatement.setString(2,fileName);
 			preparedStatement.setByte(3,typeId);
-			preparedStatement.setInt(4,size);
+			preparedStatement.setLong(4,size);
 			preparedStatement.setString(5,path);
 			preparedStatement.executeUpdate();
 		} catch (Exception e) {
@@ -731,14 +678,23 @@ public class MessageOperation {
 		}
 	}
 	
-	public void changeMessageFolderId(long message_id,byte currentFolderId,byte binFolderId) throws Exception{
-		String query = "update MessageFolders set folder_id=? where user_id = ? and message_id = ? and folder_id=?";
+	public void changeMessageFolderId(long message_id,String option,byte binFolderId) throws Exception{
+		String query = null;
+		if(Folder.getStarredName().equals(option)) {
+			query = "update MessageFolders set folder_id=? where user_id = ? and message_id = ? and is_starred=true";
+		} else if("unread".equals(option)) {
+			query = "update MessageFolders set folder_id=? where user_id = ? and message_id = ? and is_read=false";
+		}else {			
+			query = "update MessageFolders set folder_id=? where user_id = ? and message_id = ? and folder_id=?";
+		}
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
 			preparedStatement.setInt(1,binFolderId);
 			preparedStatement.setLong(2,UserDatabase.getCurrentUser().getUserId());
 			preparedStatement.setLong(3,message_id);
-			preparedStatement.setInt(4,currentFolderId);
+			if(!Folder.getStarredName().equals(option) && !"unread".equals(option)) {
+				preparedStatement.setLong(4,Folder.getFolderId(option));
+			}			
 			int rowsCount = preparedStatement.executeUpdate();
 			if(rowsCount>0) {
 				System.out.println("The message has been moved to the bin folder.");
@@ -751,13 +707,22 @@ public class MessageOperation {
 		}
 	}
 	
-	public void deleteMessage(long message_id,byte folderId) throws Exception{
-		String query = "delete from MessageFolders where user_id = ? and message_id = ? and folder_id = ?";
+	public void deleteMessage(long message_id,String option) throws Exception{
+		String query = null;
+		if(Folder.getStarredName().equals(option)) {
+			query = "delete from MessageFolders where user_id = ? and message_id = ? and is_starred=true ?";
+		} else if("unread".equals(option)) {
+			query = "delete from MessageFolders where user_id = ? and message_id = ? and is_read=false";
+		}else {
+			query = "delete from MessageFolders where user_id = ? and message_id = ? and folder_id = ?";			
+		}
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
 			preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
 			preparedStatement.setLong(2,message_id);
-			preparedStatement.setByte(3,folderId);
+			if(!Folder.getStarredName().equals(option) && !"unread".equals(option)) {
+				preparedStatement.setLong(3,Folder.getFolderId(option));
+			}			
 			int rowsCount = preparedStatement.executeUpdate();
 			if(rowsCount>0) {
 				System.out.println("Message deleted successfully.");
@@ -797,7 +762,7 @@ public class MessageOperation {
 		}
 	}
 
-	public void updateMessage(long messageId) throws Exception {
+	public void updateAttachmentStatus(long messageId) throws Exception {
 		String query = "update Messages set has_attachment=true where id = ?";
 		Connection connection  = DBConnection.getConnection();
 		try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
@@ -808,6 +773,35 @@ public class MessageOperation {
 			throw new Exception("An error occurred while trying to delete message. Please try again later. Error details: "+ e.getMessage());
 		}
 	}
+	
+	/*private boolean hasAttachment(long messageId) throws Exception {
+	String query = """
+			SELECT EXISTS (
+			    SELECT 1
+			    FROM Attachments A
+			    JOIN MessageFolders MF ON A.message_id = MF.message_id
+			    WHERE MF.user_id = ?
+			      AND MF.message_id = ?
+			      AND MF.folder_id = ?
+			);
+			""";
+	Connection connection  = DBConnection.getConnection();
+	try(PreparedStatement preparedStatement = connection.prepareStatement(query)){
+		preparedStatement.setLong(1,UserDatabase.getCurrentUser().getUserId());
+		preparedStatement.setLong(2,messageId);
+		preparedStatement.setLong(3,Folder.getFolderId(Folder.getDraftName()));
+		try(ResultSet resultSet = preparedStatement.executeQuery()){
+			if(resultSet.next()) {
+				return  resultSet.getBoolean(1);
+			}else {
+				throw new Exception("Attachment not found");
+			}
+		}
+	}catch(Exception e){
+		e.printStackTrace();
+		throw new Exception("Error during send message. Please go back and try again. Error details: " + e.getMessage());
+	}
+}*/
 	
 	/*public void setMessageUnstar(long message_id) throws Exception {
 		String query = "update MessageFolders set is_starred=false where user_id = ? and message_id = ? and is_starred=true";

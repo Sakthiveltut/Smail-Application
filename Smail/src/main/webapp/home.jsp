@@ -226,6 +226,7 @@
                 <input type="text" id="subject" name="subject" placeholder="Subject" required><br><br>
                 <textarea id="description" placeholder="Message Description" name="description" rows="6" required></textarea><br><br>
                 <input type="file" id="attachments" name="attachments" multiple><br><br>
+                <div id="attachmentContainer"></div>
                 <button type="button" id="sendMessage" value="sendMessage">Send</button>
                 <button type="button" id="saveDraft" value="draftMessage">Save as Draft</button>
             </form>
@@ -288,31 +289,35 @@
                 success: function(response) {
                     if (response.response_status.status === "success") {
                         var message = response.data;
-                        var html = "<div id='messageDetailsContent'>";
-                        html += "<div>";
-                        html += "<h2>" + message.subject + "</h2>";
-                        html += "<p><strong>From:</strong> " + message.from + "</p>";
-                        html += "<p><strong>To:</strong> " + message.to + "</p>";
-                        html += "<p><strong>Created:</strong> " + message.created_time + "</p>";
-                        //html += "<p><strong>Starred:</strong> " + message.is_starred + "</p>";
-                        //html += "<p><strong>Unread:</strong> " + message.is_read + "</p>";
-                        html += "</div>";
-                        html += "<div>";
-                        html += "<p><strong>Description:</strong><br>" + message.description + "</p>";
-                        if (message.attachments && message.attachments.length > 0) {
-                            html += "<p><strong>Attachments:</strong><br>";
-                            message.attachments.forEach(function(attachment) {
-                                html += "<a href='#' class='attachment-link' data-attachment-id='" + attachment.id + "' data-message-id='" + messageId + "'>" + attachment.name + "</a><br>";
-                            });
-                            html += "</p>";
-                        }
-                        html += "</div>";
-                        html += "</div>";
-                        $("#messageDetails").html(html).show();
-                        $("#messageList").hide();
-                        $("#backButton").show();
-                        $("h1").text("Message Details");
-                        $("#message" + messageId).removeClass("unread").addClass("read");
+                    	if(option=="draft"){
+                    		populateComposeForm(message);
+                    	}else{
+                            var html = "<div id='messageDetailsContent'>";
+                            html += "<div>";
+                            html += "<h2>" + message.subject + "</h2>";
+                            html += "<p><strong>From:</strong> " + message.from + "</p>";
+                            html += "<p><strong>To:</strong> " + message.to + "</p>";
+                            html += "<p><strong>Created:</strong> " + message.created_time + "</p>";
+                            //html += "<p><strong>Starred:</strong> " + message.is_starred + "</p>";
+                            //html += "<p><strong>Unread:</strong> " + message.is_read + "</p>";
+                            html += "</div>";
+                            html += "<div>";
+                            html += "<p><strong>Description:</strong><br>" + message.description + "</p>";
+                            if (message.attachments && message.attachments.length > 0) {
+                                html += "<p><strong>Attachments:</strong><br>";
+                                message.attachments.forEach(function(attachment) {
+                                    html += "<a href='#' class='attachment-link' data-attachment-id='" + attachment.id + "' data-message-id='" + messageId + "'>" + attachment.name + "</a><br>";
+                                });
+                                html += "</p>";
+                            }
+                            html += "</div>";
+                            html += "</div>";
+                            $("#messageDetails").html(html).show();
+                            $("#messageList").hide();
+                            $("#backButton").show();
+                            $("h1").text("Message Details");
+                            $("#message" + messageId).removeClass("unread").addClass("read");	
+                    	}
                     } else {
                         $("#messageDetails").html("<p>Error: " + response.response_status.message + "</p>").show();
                         $("#backButton").show();
@@ -350,6 +355,7 @@
         function showCompose(headingText = "Compose Message") {
             $("#composeHeading").text(headingText);
             $("#composeMessage").show();
+            $('#attachmentContainer').empty();
         }
 
         function populateComposeForm(message) {
@@ -359,6 +365,39 @@
             $('#subject').val(message.subject);
             $('#description').val(message.description);
             showCompose("Edit Message");
+            
+            $('#attachmentContainer').empty();
+			console.log("attachments "+message.attachments);
+            if (message.attachments && message.attachments.length > 0) {
+                var attachmentHtml = "";
+                message.attachments.forEach(function(attachment) {
+                    attachmentHtml += "<div class='attachment-item' data-attachment-id='" + attachment.id + "'>";
+                    attachmentHtml += "<span style='cursor:pointer' class='attachment-link' data-attachment-id='" + attachment.id + "' data-message-id='" + message.id + "'>" + attachment.name + "</span>";
+                    attachmentHtml += "<a style='color: red; cursor: pointer; font-size: 25px;' class='delete-attachment' onclick='deleteAttachment(\"" + attachment.id + "\", \"" + message.id + "\")'>×</a>";
+                    attachmentHtml += "</div>";
+                });
+                $("#attachmentContainer").html(attachmentHtml);
+            }
+        }
+        
+        function deleteAttachment(attachmentId, messageId) {
+            $.ajax({
+                url: "deleteAttachment?attachmentId=" + attachmentId + "&messageId=" + messageId,
+                type: "DELETE",
+                dataType: "json",
+                success: function(response) {
+                    if (response.response_status.status === "success") {
+                        $("div[data-attachment-id='" + attachmentId + "']").remove();
+                        alert("Attachment deleted successfully!");
+                    } else {
+                        alert("Failed to delete attachment: " + response.response_status.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error deleting attachment:", error);
+                    alert("An error occurred while deleting the attachment.");
+                }
+            });
         }
         
         function starMessage(option,messageId, buttonElement) {
@@ -387,7 +426,7 @@
                 alert("Select messages to delete.");
                 return;
             }
-
+			
             var option = $(".vertical-nav button.active").attr("id");
             $.ajax({
                 url: option + "/deleteMessages",
@@ -451,11 +490,8 @@
 	                                    html += "<i class='fa fa-star'></i>";
 	                                    html += "</button>";
                                     }
-                                    if (option === 'draft') {
-                                        html += "<a href='#' onclick='populateComposeForm(" + JSON.stringify(message) + ")'>";
-                                    } else {
-                                        html += "<a href='#' onclick='showMessageDetails(\"" + message.id + "\")'>";
-                                    }
+                                    //html += "<a href='#' onclick='populateComposeForm(" + JSON.stringify(message) + ")'>";
+                                    html += "<a href='#' onclick='showMessageDetails(\"" + message.id + "\")'>";
                                     html += "<h3 class='message-subject'>" + message.subject + "</h3>";
                                     html += "<p class='message-attachment'>" + (message.has_attachment ? "Attachment: Yes" : "Attachment: No") + "</p>";
                                     html += "<em class='message-created-time'>" + message.created_time + "</em>";

@@ -1,10 +1,5 @@
 package com.smail;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
 import com.smail.custom_exception.AuthenticationFailedException;
 import com.smail.custom_exception.EmailAlreadyExistsException;
 import com.smail.custom_exception.InvalidInputException;

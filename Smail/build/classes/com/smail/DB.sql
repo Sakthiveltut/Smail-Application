@@ -67,7 +67,7 @@ create table Attachments(
     message_id bigint not null,
     name varchar(255) not null,
     type_id tinyint not null,
-    size int unsigned,	
+    size bigint unsigned,	
     path varchar(255) not null,
     unique key(message_id,name,path),
     foreign key (message_id) references Messages(id) ON DELETE restrict,
@@ -86,6 +86,14 @@ DELETE Recipients
 FROM Recipients
 JOIN RecipientTypes ON Recipients.type_id = RecipientTypes.id
 WHERE Recipients.message_id = 5 AND RecipientTypes.type = 'to';
+
+				DELETE A
+				FROM Attachments A
+				JOIN MessageFolders MF ON A.message_id = MF.message_id
+				WHERE MF.user_id = ?
+				  AND A.message_id = ?
+				  AND A.id = ?
+                  AND MF.folder_id = ?;
 
 select * from Users u join RegisteredUsers ru  on u.id = ru.user_id where u.email = "sakthi@smail.com" and ru.password = "Sakthi@123";
 
@@ -511,7 +519,9 @@ WHERE
     mf.user_id = 1
     AND m.id = 73 AND a.id = 1
 GROUP BY 
-    m.id;
+    m.id
+ORDER BY 
+    m.created_time DESC;
     
 			SELECT 
 			    m.id,

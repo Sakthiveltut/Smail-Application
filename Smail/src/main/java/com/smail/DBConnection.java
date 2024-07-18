@@ -6,9 +6,7 @@ import org.apache.commons.dbcp2.BasicDataSource;*/
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-
 import java.sql.ResultSet;
-import java.sql.SQLException;
 
 public class DBConnection{
 	/*private static HikariDataSource dataSource;
