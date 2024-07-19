@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -32,8 +33,8 @@ import com.smail.custom_exception.InvalidInputException;
 
 @WebServlet("/")
 @MultipartConfig(fileSizeThreshold = 1024 * 1024 * 10, // 10 MB
-		maxFileSize = 1024 * 1024 * 50, // 50 MB
-		maxRequestSize = 1024 * 1024 * 100) // 100 MB
+		maxFileSize = 1024 * 1024 * 20, // 20 MB
+		maxRequestSize = 1024 * 1024 * 50) // 50 MB
 public class Smail extends HttpServlet {
 
 	private static final String SAVE_DIR = "D:\\Sakthi\\Temp\\Attachments";
@@ -84,7 +85,7 @@ public class Smail extends HttpServlet {
 			} else if ("/signout".equals(action)) {
 				signOut(request, response);
 				
-			} else if ("/attachment".equals(action)) {
+			} else if ("/downloadAttachment".equals(action)) {
 						downloadAttachment(request, response);
 			} else {
 				System.out.println("Url not found");
@@ -167,8 +168,11 @@ public class Smail extends HttpServlet {
 		JSONObject profile = new JSONObject();
 		profile.put("email", user.getEmail());
 		profile.put("name", user.getName());
-		profile.put("lastLoginTime", user.getLastLoginTime());
-
+		if(user.getLastLoginTime()==null) {
+			profile.put("lastLoginTime", "No data");			
+		}else {
+			profile.put("lastLoginTime", user.getLastLoginTime());						
+		}
 		sendResponse(response, HttpServletResponse.SC_OK, STATUS_SUCCESS, "Messages deleted successfully.", profile);
 	}
 	
@@ -180,33 +184,27 @@ public class Smail extends HttpServlet {
         
 		String filePath = null;
 		try {
-		filePath = messageOperation.fetchAttachmentPath(attachmentId,messageId);
-		System.out.println("filePath "+filePath);
-
-		File downloadFile = new File(filePath);
-		FileInputStream inStream = null;
-		inStream = new FileInputStream(downloadFile);
-
-		String mimeType = getServletContext().getMimeType(filePath);
-		System.out.println("mimeType "+mimeType); 
-		if (mimeType == null) {
-			mimeType = "application/octet-stream";
-		}
-		response.setContentType(mimeType);
-		String headerKey = "Content-Disposition";
-		String headerValue = String.format("attachment; filename=\"%s\"", downloadFile.getName());
-		response.setHeader(headerKey, headerValue);
-		OutputStream outStream = null;
-		outStream = response.getOutputStream();
-		byte[] buffer = new byte[4096];
-		int bytesRead = -1;
-		while ((bytesRead = inStream.read(buffer)) != -1) {
-			System.out.println("bytesRead "+bytesRead);
-			outStream.write(buffer, 0, bytesRead);
-		}
-		System.out.println("outStream "+outStream);
-		inStream.close();
-		outStream.close();
+			filePath = messageOperation.fetchAttachmentPath(attachmentId,messageId);
+			System.out.println("filePath "+filePath);
+	
+			File downloadFile = new File(filePath);
+			FileInputStream inStream = new FileInputStream(downloadFile);
+			String mimeType = getServletContext().getMimeType(filePath);
+			if (mimeType == null) {
+				mimeType = "application/octet-stream";
+			}
+			response.setContentType(mimeType);
+			response.setHeader("Content-Disposition", "attachment; filename="+downloadFile.getName());
+			OutputStream outStream = response.getOutputStream();
+			byte[] buffer = new byte[4096];
+			int bytesRead = -1;
+			while ((bytesRead = inStream.read(buffer)) != -1) {
+	           // String dataString = new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
+	            //System.out.println("Data: " + dataString);
+				outStream.write(buffer, 0, bytesRead);
+			}
+			inStream.close();
+			outStream.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 			sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, STATUS_FAILED, e.getMessage(), null);

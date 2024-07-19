@@ -292,6 +292,7 @@
                     	if(option=="draft"){
                     		populateComposeForm(message);
                     	}else{
+                            $("#searchBar").hide();
                             var html = "<div id='messageDetailsContent'>";
                             html += "<div>";
                             html += "<h2>" + message.subject + "</h2>";
@@ -306,7 +307,8 @@
                             if (message.attachments && message.attachments.length > 0) {
                                 html += "<p><strong>Attachments:</strong><br>";
                                 message.attachments.forEach(function(attachment) {
-                                    html += "<a href='#' class='attachment-link' data-attachment-id='" + attachment.id + "' data-message-id='" + messageId + "'>" + attachment.name + "</a><br>";
+                                    //html += "<a href='#' class='attachment-link' data-attachment-id='" + attachment.id + "' data-message-id='" + messageId + "'>" + attachment.name + "</a><br>";
+                                    html += "<a href='/Smail/downloadAttachment?attachmentId=" + attachment.id + "&messageId=" + messageId + "' class='attachment-link' data-attachment-id='" + attachment.id + "' data-message-id='" + messageId + "'>" + attachment.name + "</a><br>";
                                 });
                                 html += "</p>";
                             }
@@ -372,14 +374,13 @@
                 var attachmentHtml = "";
                 message.attachments.forEach(function(attachment) {
                     attachmentHtml += "<div class='attachment-item' data-attachment-id='" + attachment.id + "'>";
-                    attachmentHtml += "<span style='cursor:pointer' class='attachment-link' data-attachment-id='" + attachment.id + "' data-message-id='" + message.id + "'>" + attachment.name + "</span>";
+                    attachmentHtml += "<a href='/Smail/downloadAttachment?attachmentId=" + attachment.id + "&messageId=" + message.id + "' style='cursor:pointer' class='attachment-link' data-attachment-id='" + attachment.id + "' data-message-id='" + message.id + "'>" + attachment.name + "</a>";
                     attachmentHtml += "<a style='color: red; cursor: pointer; font-size: 25px;' class='delete-attachment' onclick='deleteAttachment(\"" + attachment.id + "\", \"" + message.id + "\")'>×</a>";
                     attachmentHtml += "</div>";
                 });
                 $("#attachmentContainer").html(attachmentHtml);
             }
         }
-        
         function deleteAttachment(attachmentId, messageId) {
             $.ajax({
                 url: "deleteAttachment?attachmentId=" + attachmentId + "&messageId=" + messageId,
@@ -566,7 +567,7 @@
                 }
             });
             
-            $(document).on('click', '.attachment-link', function(e) {
+            /*$(document).on('click', '.attachment-link', function(e) {
                 e.preventDefault();
                 var attachmentId = $(this).data('attachment-id');
                 var messageId = $(this).data('message-id');
@@ -581,21 +582,20 @@
                         responseType: 'blob'
                     },
                     success: function(data, status, xhr) {
-                    	console.log(xhr.getResponseHeader('Content-Disposition'));
-                        var filename = xhr.getResponseHeader('Content-Disposition').split('filename=')[1].replace(/['"]/g, '');
+                        var filename = xhr.getResponseHeader('Content-Disposition').split('filename=')[1];
                         var blob = new Blob([data]);
                         var link = document.createElement('a');
                         link.href = window.URL.createObjectURL(blob);
                         link.download = filename;
                         document.body.appendChild(link);
                         link.click();
-                        document.body.removeChild(link);
+                        document.body.removeChild(link);                   
                     },
                     error: function(xhr, status, error) {
                         console.error("Error fetching attachment details:", error);
                     }
                 });
-            }
+            }*/
             
             function submitForm(action) {
                 var option = $(".vertical-nav button.active").attr("id");

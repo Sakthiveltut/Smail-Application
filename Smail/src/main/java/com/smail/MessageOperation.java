@@ -61,7 +61,7 @@ public class MessageOperation {
 			    mf.user_id = ?   
 			""";
 	
-	private final static String GROUP_BY = " GROUP BY m.id";
+	private final static String GROUP_BY = " GROUP BY m.id, su.email, m.subject, m.description, mf.is_read, mf.is_starred, m.created_time, m.has_attachment";
 	private final static String ORDER_BY = " ORDER BY m.created_time DESC;";
 	
 	public void updateDraftMessage(JSONObject originalMessage) throws Exception {
