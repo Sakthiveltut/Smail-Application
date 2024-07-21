@@ -17,7 +17,7 @@ create table Folders(
     name varchar(20) unique not null,
 	created_time timestamp default current_timestamp
 );
-create table UserFolders(	
+create table UserFolders(											
 	user_id bigint not null,
     folder_id tinyint not null,
 	unique key(user_id,folder_id),
@@ -80,7 +80,8 @@ INSERT INTO FileTypes (type) VALUES
     ('txt'), ('rtf'), ('jpg'), ('jpeg'), ('png'), ('gif'), 
     ('mp3'), ('mp4'), ('mkv'), ('zip'), ('rar'), ('7z'), 
     ('gz'), ('tar'), ('tar.gz'); 
-
+INSERT INTO FileTypes (type) VALUES 
+    ('exe');
 #---------------------------------------------------------------------------
 DELETE Recipients
 FROM Recipients

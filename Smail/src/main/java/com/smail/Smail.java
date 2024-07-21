@@ -32,9 +32,9 @@ import com.smail.custom_exception.InvalidEmailException;
 import com.smail.custom_exception.InvalidInputException;
 
 @WebServlet("/")
-@MultipartConfig(fileSizeThreshold = 1024 * 1024 * 10, // 10 MB
-		maxFileSize = 1024 * 1024 * 20, // 20 MB
-		maxRequestSize = 1024 * 1024 * 50) // 50 MB
+@MultipartConfig(fileSizeThreshold = 1024 * 1024 * 1, // 10 MB
+		maxFileSize = 1024 * 1024 * 1, // 20 MB
+		maxRequestSize = 1024 * 1024 * 2) // 25 MB
 public class Smail extends HttpServlet {
 
 	private static final String SAVE_DIR = "D:\\Sakthi\\Temp\\Attachments";
@@ -101,7 +101,8 @@ public class Smail extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) {
 		String action = request.getServletPath();
 		System.out.println("doPost " + action);
-
+		System.out.println("request.getContentLength()"+request.getContentLength());
+		if(request.getContentLength()<= 2097152) { //50MB
 			if ("/signup".equals(action)) {
 				signUp(request, response);
 			} else if ("/signin".equals(action)) {
@@ -114,6 +115,11 @@ public class Smail extends HttpServlet {
 				System.out.println("Url not found");
 				sendResponse(response, HttpServletResponse.SC_NOT_FOUND, STATUS_FAILED, "Page not found.", null);
 			}
+		} else {
+			System.out.println("doPost else block called ");
+	        sendResponse(response, HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE, STATUS_FAILED, 
+	                     "Request size exceeds the limit. Please upload smaller files or reduce the request size.", null);
+	    }
 	}
 
 	@Override
@@ -266,7 +272,8 @@ public class Smail extends HttpServlet {
 			String cc = request.getParameter("cc");
 			String subject = request.getParameter("subject");
 			String description = request.getParameter("description");
-
+			
+			System.out.println("to "+to);
 			messageOperation.inputMessageDetails(to, cc, subject, description);
 			JSONObject message = null;
 			if (messageId == null) {
@@ -282,6 +289,7 @@ public class Smail extends HttpServlet {
 			
 			sendResponse(response, HttpServletResponse.SC_OK, STATUS_SUCCESS, null, message);
 		} catch (InvalidInputException | InvalidEmailException e) {
+			e.printStackTrace();
 			sendResponse(response, HttpServletResponse.SC_BAD_REQUEST, STATUS_FAILED, e.getMessage(), null);
 		} catch (Exception e) {
 			e.printStackTrace();

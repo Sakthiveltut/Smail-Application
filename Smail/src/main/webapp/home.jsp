@@ -626,16 +626,18 @@
                             $('#composeError').text(response.response_status.message || 'Unknown error');
                         }
                     },
-	                error: function(xhr, status, error) {
-	                    let message;
-	                    try {
-	                        const response = JSON.parse(xhr.responseText);
-	                        message = response.response_status.message || "An unknown error occurred.";
-	                    } catch (e) {
-	                        message = "An error occurred. Please try again.";
-	                    }
-	                    $('#composeError').html('<p style="color: red;">' + message + '</p>');
-	                }
+                    error: function(xhr, status, error) {
+                        let message = "An unknown error occurred.";
+                        if (xhr.responseText) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                message = response.response_status.message || message;
+                            } catch (e) {
+                                message = "Error parsing server response.";
+                            }
+                        }
+                        $('#composeError').html('<p style="color: red;">' + message + '</p>');
+                    }
                 });
             }
      </script>

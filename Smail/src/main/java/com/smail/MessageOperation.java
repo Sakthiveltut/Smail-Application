@@ -92,7 +92,7 @@ public class MessageOperation {
 	}
 	
 	private boolean isValidMessage() throws InvalidInputException {
-		if(!to.isEmpty()){
+		if(to!=null && !to.isEmpty()){
 			String toEmails[] = to.split(",");
 			if(toEmails.length!=0){
 				if(Validator.isValidEmails(toEmails)){
