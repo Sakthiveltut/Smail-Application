@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.text.SimpleDateFormat;
@@ -32,12 +33,13 @@ import com.smail.custom_exception.InvalidEmailException;
 import com.smail.custom_exception.InvalidInputException;
 
 @WebServlet("/")
-@MultipartConfig(fileSizeThreshold = 1024 * 1024 * 1, // 10 MB
-		maxFileSize = 1024 * 1024 * 1, // 20 MB
-		maxRequestSize = 1024 * 1024 * 2) // 25 MB
+@MultipartConfig(fileSizeThreshold = 1024 * 1024 * 1,
+		maxFileSize = 1024 * 1024 * 1, 
+		maxRequestSize = 1024 * 1024 * 2) 
 public class Smail extends HttpServlet {
 
 	private static final String SAVE_DIR = "D:\\Sakthi\\Temp\\Attachments";
+	private static final long FILE_MAX_SIZE = 2097152;
 
 	@Override
 	public void init() {
@@ -58,7 +60,12 @@ public class Smail extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) {
 		String action = request.getServletPath();
 		System.out.println("doGet" + action);
-
+		try {
+			request.setCharacterEncoding("UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+			sendResponse(response, HttpServletResponse.SC_NOT_FOUND, STATUS_FAILED, "Unsupported encoding: " + e.getMessage(), null);
+		}
 		HttpSession session = request.getSession(false);
 		if (session != null && session.getAttribute("user") != null) {
 
@@ -98,11 +105,17 @@ public class Smail extends HttpServlet {
 	}
 
 	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) {
+	protected void doPost(HttpServletRequest request, HttpServletResponse response){
+		try {
+			request.setCharacterEncoding("UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+			sendResponse(response, HttpServletResponse.SC_NOT_FOUND, STATUS_FAILED, "Unsupported encoding: " + e.getMessage(), null);
+		}
 		String action = request.getServletPath();
 		System.out.println("doPost " + action);
 		System.out.println("request.getContentLength()"+request.getContentLength());
-		if(request.getContentLength()<= 2097152) { //50MB
+		if(request.getContentLength()<= FILE_MAX_SIZE) { 
 			if ("/signup".equals(action)) {
 				signUp(request, response);
 			} else if ("/signin".equals(action)) {
@@ -116,7 +129,6 @@ public class Smail extends HttpServlet {
 				sendResponse(response, HttpServletResponse.SC_NOT_FOUND, STATUS_FAILED, "Page not found.", null);
 			}
 		} else {
-			System.out.println("doPost else block called ");
 	        sendResponse(response, HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE, STATUS_FAILED, 
 	                     "Request size exceeds the limit. Please upload smaller files or reduce the request size.", null);
 	    }
@@ -205,8 +217,10 @@ public class Smail extends HttpServlet {
 			byte[] buffer = new byte[4096];
 			int bytesRead = -1;
 			while ((bytesRead = inStream.read(buffer)) != -1) {
-	           // String dataString = new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
-	            //System.out.println("Data: " + dataString);
+				System.out.println("bytesRead "+bytesRead);
+				System.out.println("file content "+Arrays.toString(buffer));
+				String dataString = new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
+	            System.out.println("Data: " + dataString);
 				outStream.write(buffer, 0, bytesRead);
 			}
 			inStream.close();
@@ -273,7 +287,7 @@ public class Smail extends HttpServlet {
 			String subject = request.getParameter("subject");
 			String description = request.getParameter("description");
 			
-			System.out.println("to "+to);
+			System.out.println(subject+" "+description);
 			messageOperation.inputMessageDetails(to, cc, subject, description);
 			JSONObject message = null;
 			if (messageId == null) {
@@ -429,10 +443,10 @@ public class Smail extends HttpServlet {
 	}
 
 	private void displayMessages(HttpServletRequest request, HttpServletResponse response, String folderName) {
-		String searchedKeyword = request.getParameter("search");
-		System.out.println(searchedKeyword);
-		JSONArray messages = null;
 		try {
+			String searchedKeyword = request.getParameter("search");
+			System.out.println("searchedKeyword "+searchedKeyword);
+			JSONArray messages = null;
 			if (searchedKeyword == null) {
 				messages = MessageOperation.getMessages(folderName);
 			} else {
@@ -453,7 +467,8 @@ public class Smail extends HttpServlet {
 	@SuppressWarnings("unchecked")
 	private void sendResponse(HttpServletResponse response, int statusCode, String status, String message,
 			Object jsonData) {
-
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("text/html;charset=UTF-8");
 		JSONObject response_status = new JSONObject();
 		response_status.put("status_code", statusCode);
 		response_status.put("status", status);

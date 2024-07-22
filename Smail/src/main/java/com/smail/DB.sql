@@ -80,25 +80,16 @@ INSERT INTO FileTypes (type) VALUES
     ('txt'), ('rtf'), ('jpg'), ('jpeg'), ('png'), ('gif'), 
     ('mp3'), ('mp4'), ('mkv'), ('zip'), ('rar'), ('7z'), 
     ('gz'), ('tar'), ('tar.gz'); 
-INSERT INTO FileTypes (type) VALUES 
-    ('exe');
+    
+select * from FileTypes;
+delete from FileTypes where type = "exe";
 #---------------------------------------------------------------------------
-DELETE Recipients
-FROM Recipients
-JOIN RecipientTypes ON Recipients.type_id = RecipientTypes.id
-WHERE Recipients.message_id = 5 AND RecipientTypes.type = 'to';
 
-				DELETE A
-				FROM Attachments A
-				JOIN MessageFolders MF ON A.message_id = MF.message_id
-				WHERE MF.user_id = ?
-				  AND A.message_id = ?
-				  AND A.id = ?
-                  AND MF.folder_id = ?;
+SELECT *
+FROM Messages
+WHERE description LIKE '%சக்திவேல்%';
 
-select * from Users u join RegisteredUsers ru  on u.id = ru.user_id where u.email = "sakthi@smail.com" and ru.password = "Sakthi@123";
 
-select * from Users u join RegisteredUsers ru  on u.id = ru.user_id where u.id=4;
 
 show tables;
 
@@ -169,43 +160,46 @@ insert into Recipients values(3,2,'to');
 insert into Recipients values(3,1,'cc');
 select * from Recipients;
 
-			SELECT 
-			    m.id,
-			    su.email AS sender_email,
-			    m.subject,
-			    m.description,
-			    mf.is_read,
-			 	mf.is_starred,
-			    m.created_time,
-			    m.has_attachment,
-			    GROUP_CONCAT(DISTINCT CASE WHEN rt.type = 'to' THEN u.email END SEPARATOR ', ') AS to_recipients,
-			    GROUP_CONCAT(DISTINCT CASE WHEN rt.type = 'cc' THEN u.email END SEPARATOR ', ') AS cc_recipients,
-			    GROUP_CONCAT(a.id SEPARATOR ', ') AS attachment_ids,
-			    GROUP_CONCAT(a.name SEPARATOR ', ') AS attachment_names,
-			    GROUP_CONCAT(a.path SEPARATOR ', ') AS attachment_paths,
-			    GROUP_CONCAT(ft.type SEPARATOR ', ') AS attachment_types
-			FROM 
-			    Messages m
-			LEFT JOIN 
-			    Recipients r ON m.id = r.message_id
-			LEFT JOIN 
-			    Users u ON r.user_id = u.id
-			LEFT JOIN 
-			    RecipientTypes rt ON r.type_id = rt.id
-			LEFT JOIN 
-				Attachments a ON m.id = a.message_id
-			LEFT JOIN 
-			 	FileTypes ft ON a.type_id = ft.id
-			JOIN 
-			    MessageFolders mf ON m.id = mf.message_id
-			JOIN 
-			    Users su ON m.sender_id = su.id
-			JOIN 
-			    Folders f ON mf.folder_id = f.id
-			WHERE 
-			    mf.user_id = 1 
-			GROUP BY m.id
-            ORDER BY m.created_time DESC;
+SELECT 
+    m.id,
+    su.email AS sender_email,
+    m.subject,
+    m.description,
+    mf.is_read,
+    mf.is_starred,
+    m.created_time,
+    m.has_attachment,
+    GROUP_CONCAT(DISTINCT CASE WHEN rt.type = 'to' THEN u.email END SEPARATOR ', ') AS to_recipients,
+    GROUP_CONCAT(DISTINCT CASE WHEN rt.type = 'cc' THEN u.email END SEPARATOR ', ') AS cc_recipients,
+    GROUP_CONCAT(a.id SEPARATOR ', ') AS attachment_ids,
+    GROUP_CONCAT(a.name SEPARATOR ', ') AS attachment_names,
+    GROUP_CONCAT(a.path SEPARATOR ', ') AS attachment_paths,
+    GROUP_CONCAT(ft.type SEPARATOR ', ') AS attachment_types
+FROM 
+    Messages m
+LEFT JOIN 
+    Recipients r ON m.id = r.message_id
+LEFT JOIN 
+    Users u ON r.user_id = u.id
+LEFT JOIN 
+    RecipientTypes rt ON r.type_id = rt.id
+LEFT JOIN 
+    Attachments a ON m.id = a.message_id
+LEFT JOIN 
+    FileTypes ft ON a.type_id = ft.id
+JOIN 
+    MessageFolders mf ON m.id = mf.message_id
+JOIN 
+    Users su ON m.sender_id = su.id
+JOIN 
+    Folders f ON mf.folder_id = f.id
+WHERE 
+    m.subject LIKE 'hello%'  -- Use LIKE with a pattern
+GROUP BY 
+    m.id, su.email, m.subject, m.description
+ORDER BY 
+    m.created_time DESC;
+
     
 
 set sql_safe_updates = 0;
@@ -344,5 +338,4 @@ create table Attachments(
     foreign key (message_id) references Messages(id) ON DELETE restrict
 );*/
 #----------------------------------------------------------
-
 

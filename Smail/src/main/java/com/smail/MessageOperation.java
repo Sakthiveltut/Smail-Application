@@ -490,6 +490,8 @@ public class MessageOperation {
 	
 	@SuppressWarnings("unchecked")
 	public static JSONArray getSearchedMessages(String folderName,String searchedkeyword) throws Exception{
+		System.out.println("searchedkeyword"+searchedkeyword);
+		
 		StringBuilder queryBuilder = new StringBuilder(BASE_QUERY);
 		if(Folder.getStarredName().equals(folderName)) {
 			queryBuilder.append(" AND mf.is_starred = true ");

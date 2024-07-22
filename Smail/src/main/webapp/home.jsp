@@ -207,10 +207,10 @@
     <div class="content">
     	<div class="profile"></div>
         <h1>Messages</h1>
-        <div id="searchBar">
-	        <input type="text" id="searchInput" placeholder="Search messages...">
-	        <button id="searchButton">Search</button>
-    	</div>
+        <form id="searchBar">
+	        <input type="text" id="searchInput" name="search" placeholder="Search messages...">
+	        <button type="submit" id="searchButton">Search</button>
+    	</form>
         <button id="deleteMessages" onclick="deleteSelectedMessages()">Delete Selected</button>
         <div id="backButton"><button onclick="showMessageList()">Back to Messages</button></div>
         <div id="messageList"></div>
@@ -462,14 +462,15 @@
 
             function displayMessages(option, keyword = "") {		
                 let url = option;
-                if (keyword) {
+                /*if (keyword) {
                     url += "?search=" + keyword;
-                }
+                }*/
                 
                 $.ajax({
                     url: url,
                     type: "GET",
-                    dataType: "json",
+                    dataType: "json",	
+	                //data: $(this).serialize(),
                     success: function(response) {
                         if (response.response_status.status_code == 401 || option === "signout") {
                             window.location.href = "/Smail/signin.jsp";
@@ -556,46 +557,69 @@
                 e.preventDefault();
                 submitForm('saveDraft');
             });
-            
-            $("#searchButton").click(function() {
-                var keyword = $("#searchInput").val().trim();
-                var option = $(".vertical-nav button.active").attr("id");
-                if (keyword) {
-                    displayMessages(option, keyword);
-                } else {
-                    displayMessages(option);
-                }
-            });
-            
-            /*$(document).on('click', '.attachment-link', function(e) {
-                e.preventDefault();
-                var attachmentId = $(this).data('attachment-id');
-                var messageId = $(this).data('message-id');
-                fetchAttachment(messageId,attachmentId);
-            });
-            
-            function fetchAttachment(messageId,attachmentId) {
-                $.ajax({
-                    url: "attachment?attachmentId=" + attachmentId + "&messageId=" + messageId,
-                    type: "GET",
-                    xhrFields: {
-                        responseType: 'blob'
-                    },
-                    success: function(data, status, xhr) {
-                        var filename = xhr.getResponseHeader('Content-Disposition').split('filename=')[1];
-                        var blob = new Blob([data]);
-                        var link = document.createElement('a');
-                        link.href = window.URL.createObjectURL(blob);
-                        link.download = filename;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);                   
-                    },
-                    error: function(xhr, status, error) {
-                        console.error("Error fetching attachment details:", error);
-                    }
-                });
-            }*/
+            /*$(document).ready(function() {
+	            $('#searchBar').submit(function(e) {
+	            //$("#searchButton").click(function(e) {
+	            	e.preventDefault();
+	                var keyword = $("#searchInput").val().trim();
+	                console.log("keyword "+keyword);
+	                var option = $(".vertical-nav button.active").attr("id");
+	                if (keyword) {
+	                    displayMessages(option, keyword);
+	                } else {
+	                    displayMessages(option);
+	                }
+	            });
+        	});*/
+        	
+        	
+        	$(document).ready(function() {
+        	    $('#searchBar').submit(function(e) {
+        	        e.preventDefault();
+        	        var option = $(".vertical-nav button.active").attr("id");
+        	        $.ajax({
+        	            url: '/Smail/'+option, 
+        	            type: 'GET',
+    	                data: $(this).serialize(),
+    	                dataType: 'json',
+                        success: function(response) {
+                            if (response.response_status.status === "success") {
+                                var messages = response.data;
+                                if (messages && messages.length > 0) {
+                                    var html = "<ul class='message-list'>";
+                                    $.each(messages, function(index, message) {
+                                    	var readClass = message.is_read ? 'read' : 'unread';
+                                        html += "<li id='message" + message.id + "' class='message-list-item " + readClass + "'>";
+                                        html += "<input type='checkbox' class='message-checkbox' data-message-id='" + message.id + "'>";
+                                        if(option!="bin"){
+                                       		html += "<button id='star' class='star-button " + (message.is_starred ? "starred" : "") + "' onclick='starMessage(\"" + option + "\", \"" + message.id + "\", this)'>";                                    	                                    	
+    	                                    html += "<i class='fa fa-star'></i>";
+    	                                    html += "</button>";
+                                        }
+                                        html += "<a href='#' onclick='showMessageDetails(\"" + message.id + "\")'>";
+                                        html += "<h3 class='message-subject'>" + message.subject + "</h3>";
+                                        html += "<p class='message-attachment'>" + (message.has_attachment ? "Attachment: Yes" : "Attachment: No") + "</p>";
+                                        html += "<em class='message-created-time'>" + message.created_time + "</em>";
+                                        html += "</a>";
+                                        html += "</li>";
+                                    });
+                                    html += "</ul>";
+                                    $("#messageList").html(html);
+                                } else {
+                                    $("#messageList").html("<p>No messages found.</p>");
+                                }
+                            } else {
+                                $("#messageList").html("<p>Error: " + response.response_status.message + "</p>");
+                            }
+                        },
+        	            error: function(xhr, status, error) {
+        	                console.error("Error: " + error);
+        	                $("#messageList").html("<p>An error occurred while fetching messages.</p>");
+        	            }
+        	        });
+        	    });
+        	});
+
             
             function submitForm(action) {
                 var option = $(".vertical-nav button.active").attr("id");
@@ -640,6 +664,39 @@
                     }
                 });
             }
+             
+            
+        /*$(document).on('click', '.attachment-link', function(e) {
+            e.preventDefault();
+            var attachmentId = $(this).data('attachment-id');
+            var messageId = $(this).data('message-id');
+            fetchAttachment(messageId,attachmentId);
+        });
+        
+        function fetchAttachment(messageId,attachmentId) {
+            $.ajax({
+                url: "attachment?attachmentId=" + attachmentId + "&messageId=" + messageId,
+                type: "GET",
+                xhrFields: {
+                    responseType: 'blob'
+                },
+                success: function(data, status, xhr) {
+                    var filename = xhr.getResponseHeader('Content-Disposition').split('filename=')[1];
+                    var blob = new Blob([data]);
+                    var link = document.createElement('a');
+                    link.href = window.URL.createObjectURL(blob);
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);                   
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error fetching attachment details:", error);
+                }
+            });
+        }*/
+        
+        
      </script>
 </body>
 </html>
