@@ -442,7 +442,7 @@
                         selectedMessages = [];
                         $('#deleteMessages').hide();
                     } else {
-                        alert("Failed to delete messages.");
+                        alert(response.response_status.message);
                     }
                 },
                 error: function(xhr, status, error) {
@@ -460,7 +460,7 @@
             }
         }
 
-            function displayMessages(option, keyword = "") {		
+            function displayMessages(option) {		
                 let url = option;
                 /*if (keyword) {
                     url += "?search=" + keyword;

@@ -39,7 +39,8 @@ import com.smail.custom_exception.InvalidInputException;
 public class Smail extends HttpServlet {
 
 	private static final String SAVE_DIR = "D:\\Sakthi\\Temp\\Attachments";
-	private static final long FILE_MAX_SIZE = 2097152;
+	private static final long CONTENT_MAX_SIZE = 2097152;
+	private boolean initializationFailed = false;
 
 	@Override
 	public void init() {
@@ -48,16 +49,21 @@ public class Smail extends HttpServlet {
 			RecipientType.setRecipientTypes();
 			Attachment.loadFileTypes();
 		} catch (Exception e) {
-			System.out.println(e.getMessage());
+			initializationFailed = true;
 			e.printStackTrace();
 		}
 	}
 
 	private static final String STATUS_SUCCESS = "success", STATUS_FAILED = "failed";
+	private static final String PROFILE = "/profile", UNREAD = "unread", SIGN_UP = "/signup", SIGN_IN = "/signin", SIGN_OUT = "/signout";
 	private MessageOperation messageOperation = new MessageOperation();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) {
+        if (initializationFailed) {
+			sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, STATUS_FAILED, "Servlet initialization failed. Please contact the administrator.", null);
+            return;
+        }
 		String action = request.getServletPath();
 		System.out.println("doGet" + action);
 		try {
@@ -73,23 +79,23 @@ public class Smail extends HttpServlet {
 			System.out.println(Arrays.toString(url));
 			byte size = (byte) url.length;
 
-			if ("/profile".equals(action)) {
+			if (PROFILE.equals(action)) {
 				profile(response);
 			} else if (size == 2 && (Folder.getFolders().containsKey(url[1]) || Folder.getStarredName().equals(url[1])
-					|| "unread".equals(url[1]))) {
+					|| UNREAD.equals(url[1]))) {
 				displayMessages(request, response, url[1]);
 
 			} else if (size == 3 && "messageDetails".equals(url[size - 1])) {
 				if (Folder.getFolders().containsKey(url[1]) || Folder.getStarredName().equals(url[1])
-						|| "unread".equals(url[1])) {
+						|| UNREAD.equals(url[1])) {
 					displayMessageDetails(request, response, url[1]);
 				}
 			} else if (size == 3 && "star".equals(url[size - 1])) {
 				if (Folder.getFolders().containsKey(url[1]) || Folder.getStarredName().equals(url[1])
-						|| "unread".equals(url[1])) {
+						|| UNREAD.equals(url[1])) {
 					starMessage(request, response, url[1]);
 				}
-			} else if ("/signout".equals(action)) {
+			} else if (SIGN_OUT.equals(action)) {
 				signOut(request, response);
 				
 			} else if ("/downloadAttachment".equals(action)) {
@@ -106,6 +112,10 @@ public class Smail extends HttpServlet {
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response){
+        if (initializationFailed) {
+			sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, STATUS_FAILED, "Servlet initialization failed. Please contact the administrator.", null);
+            return;
+        }
 		try {
 			request.setCharacterEncoding("UTF-8");
 		} catch (UnsupportedEncodingException e) {
@@ -115,10 +125,10 @@ public class Smail extends HttpServlet {
 		String action = request.getServletPath();
 		System.out.println("doPost " + action);
 		System.out.println("request.getContentLength()"+request.getContentLength());
-		if(request.getContentLength()<= FILE_MAX_SIZE) { 
-			if ("/signup".equals(action)) {
+		if(request.getContentLength()<= CONTENT_MAX_SIZE) { 
+			if (SIGN_UP.equals(action)) {
 				signUp(request, response);
-			} else if ("/signin".equals(action)) {
+			} else if (SIGN_IN.equals(action)) {
 				signIn(request, response);
 			} else if ("/sendMessage".equals(action)) {
 				sendMessage(request, response, "sendMessage");
@@ -136,6 +146,10 @@ public class Smail extends HttpServlet {
 
 	@Override
 	protected void doDelete(HttpServletRequest request, HttpServletResponse response) {
+        if (initializationFailed) {
+			sendResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, STATUS_FAILED, "Servlet initialization failed. Please contact the administrator.", null);
+            return;
+        }
 		String action = request.getServletPath();
 		System.out.println("doDelete " + action);
 
@@ -146,7 +160,7 @@ public class Smail extends HttpServlet {
 		if (session != null && session.getAttribute("user") != null) {
 			if ("deleteMessages".equals(url[size - 1])) {
 				if (Folder.getFolders().containsKey(url[1]) || Folder.getStarredName().equals(url[1])
-						|| "unread".equals(url[1])) {
+						|| UNREAD.equals(url[1])) {
 					deleteMessages(request, response, url[1]);
 				}
 			}else if("/deleteAttachment".equals(action)) {
@@ -233,6 +247,7 @@ public class Smail extends HttpServlet {
 
 	private void deleteMessages(HttpServletRequest request, HttpServletResponse response, String option) {
 		System.out.println("deleteMessage ids "+request.getParameter("ids"));
+		System.out.println("deleteMessage ids "+request.getParameterValues("ids"));
 
 		StringBuilder stringBuilder = new StringBuilder();
 		try (BufferedReader reader = request.getReader()) {
