@@ -47,6 +47,11 @@
 		    bottom: 30px; 
 		    left: 0;
 		}
+		input[type="file"]:hover{
+			transform:scale(1.1);
+			transition:15ms;
+			color:blue;
+		}
 		.content {
             margin-left: 250px;
             padding: 20px;

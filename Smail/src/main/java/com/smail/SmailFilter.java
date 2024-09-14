@@ -24,6 +24,7 @@ public class SmailFilter implements Filter{
 			if(session!=null && session.getAttribute("user")!=null) {
 				User currentUser = (User)session.getAttribute("user");
 				UserDatabase.setCurrentUser(currentUser);
+				session.setMaxInactiveInterval(5*60);
 			}
 			chain.doFilter(request, response);
 		}finally {
